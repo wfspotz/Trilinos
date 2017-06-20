@@ -11,12 +11,9 @@
 
 namespace Tempus {
 
-
 template <typename Scalar>
 Thyra::ModelEvaluatorBase::InArgs<Scalar>
-SecondOrderResidualModelEvaluator<Scalar>::
-createInArgs() const
-{
+SecondOrderResidualModelEvaluator<Scalar>::createInArgs() const {
 #ifdef VERBOSE_DEBUG_OUTPUT
   *out_ << "DEBUG: " << __PRETTY_FUNCTION__ << "\n";
 #endif
@@ -30,12 +27,9 @@ createInArgs() const
   return inArgs;
 }
 
-
 template <typename Scalar>
 Thyra::ModelEvaluatorBase::OutArgs<Scalar>
-SecondOrderResidualModelEvaluator<Scalar>::
-createOutArgsImpl() const
-{
+SecondOrderResidualModelEvaluator<Scalar>::createOutArgsImpl() const {
 #ifdef VERBOSE_DEBUG_OUTPUT
   *out_ << "DEBUG: " << __PRETTY_FUNCTION__ << "\n";
 #endif
@@ -43,70 +37,79 @@ createOutArgsImpl() const
 
   MEB::OutArgsSetup<Scalar> outArgs;
   outArgs.setModelEvalDescription(this->description());
-  outArgs.set_Np_Ng(transientModel_->Np(),0);
+  outArgs.set_Np_Ng(transientModel_->Np(), 0);
   outArgs.setSupports(MEB::OUT_ARG_f);
   outArgs.setSupports(MEB::OUT_ARG_W_op);
 
   return outArgs;
 }
 
-
 template <typename Scalar>
 void
-SecondOrderResidualModelEvaluator<Scalar>::
-evalModelImpl(const Thyra::ModelEvaluatorBase::InArgs<Scalar> &inArgs,
-              const Thyra::ModelEvaluatorBase::OutArgs<Scalar> &outArgs) const
-{
+SecondOrderResidualModelEvaluator<Scalar>::evalModelImpl(
+    const Thyra::ModelEvaluatorBase::InArgs<Scalar> &inArgs,
+    const Thyra::ModelEvaluatorBase::OutArgs<Scalar> &outArgs) const {
 #ifdef VERBOSE_DEBUG_OUTPUT
   *out_ << "DEBUG: " << __PRETTY_FUNCTION__ << "\n";
 #endif
   typedef Thyra::ModelEvaluatorBase MEB;
   using Teuchos::RCP;
-  
-  //Setup initial condition
-  //Create and populate inArgs
+
+  // Setup initial condition
+  // Create and populate inArgs
   MEB::InArgs<Scalar> transientInArgs = transientModel_->createInArgs();
 
-  switch (schemeType_) 
-  {
-    case NEWMARK_IMPLICIT: 
-      //Specific for the Newmark-Beta stepper.  May want to redesign this for a generic 
-      //second order scheme to not have an if statement here... 
-      //IKT, 3/14/17: this is effectively the same as the Piro::NewmarkDecorator::evalModel function.  
-      //the solution variable in NOX is the acceleration, a_{n+1} 
-      transientInArgs.set_x_dot_dot(inArgs.get_x()); 
-      RCP<Thyra::VectorBase<Scalar> > velocity = Thyra::createMember(inArgs.get_x()->space());
-      //compute the velocity, v_{n+1}(a_{n+1}) = velocity_{pred} + \gamma dt a_{n+1}
-      Thyra::V_StVpStV(Teuchos::ptrFromRef(*velocity), 1.0, *v_pred_, delta_t_*gamma_, *inArgs.get_x());
-      transientInArgs.set_x_dot(velocity); 
-      RCP<Thyra::VectorBase<Scalar> > displacement = Thyra::createMember(inArgs.get_x()->space());
-      //compute the displacement, d_{n+1}(a_{n+1}) = displacement_{pred} + \beta dt^2 a_{n+1}
-      Thyra::V_StVpStV(Teuchos::ptrFromRef(*displacement), 1.0, *d_pred_, beta_*delta_t_*delta_t_, *inArgs.get_x()); 
-      transientInArgs.set_x(displacement); 
-      transientInArgs.set_W_x_dot_dot_coeff(1.0);                 // da/da
-      transientInArgs.set_alpha(gamma_*delta_t_);                 // dv/da
-      transientInArgs.set_beta(beta_*delta_t_*delta_t_);          // dd/da
-      break; 
+  switch (schemeType_) {
+    case NEWMARK_IMPLICIT:
+
+      RCP<Thyra::VectorBase<Scalar> const>
+      d = inArgs.get_x();
+
+      RCP<Thyra::VectorBase<Scalar>>
+      v = Thyra::createMember(inArgs.get_x()->space());
+
+      RCP<Thyra::VectorBase<Scalar>>
+      a = Thyra::createMember(inArgs.get_x()->space());
+
+      // compute acceleration
+      // a_{n+1} = (d_{n+1} - d_pred) / dt / dt / beta
+      Scalar const
+      c = 1.0 / beta_ / delta_t_ / delta_t_;
+
+      Thyra::V_StVpStV(Teuchos::ptrFromRef(*a), c, *d, -c, *d_pred_);
+
+      // compute velocity
+      // v_{n+1} = v_pred + \gamma dt a_{n+1}
+      Thyra::V_StVpStV(
+          Teuchos::ptrFromRef(*v), 1.0, *v_pred_, delta_t_ * gamma_, *a);
+
+      transientInArgs.set_x(d);
+      transientInArgs.set_x_dot(v);
+      transientInArgs.set_x_dot_dot(a);
+
+      transientInArgs.set_W_x_dot_dot_coeff(c);               // da/dd
+      transientInArgs.set_alpha(gamma_ / delta_t_ / beta_);   // dv/dd
+      transientInArgs.set_beta(1.0);                          // dd/dd
+
+      break;
   }
 
   transientInArgs.set_t(t_);
-  for (int i=0; i<transientModel_->Np(); ++i) {
+  for (int i = 0; i < transientModel_->Np(); ++i) {
     if (inArgs.get_p(i) != Teuchos::null)
       transientInArgs.set_p(i, inArgs.get_p(i));
   }
 
-
-  //Setup output condition 
-  //Create and populate outArgs 
+  // Setup output condition
+  // Create and populate outArgs
   MEB::OutArgs<Scalar> transientOutArgs = transientModel_->createOutArgs();
   transientOutArgs.set_f(outArgs.get_f());
   transientOutArgs.set_W_op(outArgs.get_W_op());
 
   // build residual and jacobian
-  transientModel_->evalModel(transientInArgs,transientOutArgs); 
+  transientModel_->evalModel(transientInArgs, transientOutArgs);
 }
 
-
-} // namespace Tempus
+}  // namespace Tempus
 
 #endif  // Tempus_SecondOrderResidualModelEvaluator_impl_hpp

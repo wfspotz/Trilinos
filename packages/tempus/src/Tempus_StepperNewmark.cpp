@@ -13,7 +13,7 @@
 #include "Tempus_StepperNewmark_impl.hpp"
 
 namespace Tempus {
-  TEMPUS_INSTANTIATE_TEMPLATE_CLASS(StepperNewmark)
+TEMPUS_INSTANTIATE_TEMPLATE_CLASS(StepperNewmark)
 }
 
 #endif

@@ -13,7 +13,7 @@
 #include "Tempus_SecondOrderResidualModelEvaluator_impl.hpp"
 
 namespace Tempus {
-  TEMPUS_INSTANTIATE_TEMPLATE_CLASS(SecondOrderResidualModelEvaluator)
+TEMPUS_INSTANTIATE_TEMPLATE_CLASS(SecondOrderResidualModelEvaluator)
 }
 
 #endif
