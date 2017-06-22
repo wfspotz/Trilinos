@@ -254,6 +254,7 @@ StepperNewmark<Scalar>::takeStep(
     // Update time
     Scalar t = time + dt;
 
+#if 0
     // Compute initial displacement, velocity and acceleration
     if (time == solutionHistory->minTime()) {
 
@@ -308,7 +309,9 @@ StepperNewmark<Scalar>::takeStep(
       }
 
       correctAcceleration(*a_old, *d_old, *d_init, dt);
+      Thyra::copy(*d_init, d_old.ptr());
     }
+#endif
 
 #ifdef DEBUG_OUTPUT
     Teuchos::Range1D range;
@@ -365,10 +368,10 @@ StepperNewmark<Scalar>::takeStep(
 
     // Solve for new displacement
     // IKT, 3/13/17: check how solveNonLinear works.
-    const Thyra::SolveStatus<double> sStatus =
+    const Thyra::SolveStatus<double> status =
         this->solveNonLinear(residualModel_, *solver_, d_old, inArgs_);
 
-    if (sStatus.solveStatus == Thyra::SOLVE_STATUS_CONVERGED)
+    if (status.solveStatus == Thyra::SOLVE_STATUS_CONVERGED)
       workingState->getStepperState()->stepperStatus_ = Status::PASSED;
     else
       workingState->getStepperState()->stepperStatus_ = Status::FAILED;
