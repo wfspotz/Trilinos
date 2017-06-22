@@ -52,7 +52,7 @@ SecondOrderResidualModelEvaluator<Scalar>::evalModelImpl(
 #ifdef VERBOSE_DEBUG_OUTPUT
   *out_ << "DEBUG: " << __PRETTY_FUNCTION__ << "\n";
 #endif
-  typedef Thyra::ModelEvaluatorBase MEB;
+  using MEB = Thyra::ModelEvaluatorBase;
   using Teuchos::RCP;
 
   // Setup initial condition
