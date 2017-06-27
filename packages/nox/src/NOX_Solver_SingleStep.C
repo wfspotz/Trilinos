@@ -132,6 +132,7 @@ bool NOX::Solver::SingleStep::try_step()
              "solve Newton system"))
     return false;
   const NOX::Abstract::Vector& dir = solnPtr->getNewton();
+  oldSolnPtr->computeF();
   solnPtr->computeX(*oldSolnPtr, dir, 1.0);
   return true;
 }
