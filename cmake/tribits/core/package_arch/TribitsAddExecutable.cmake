@@ -93,7 +93,7 @@ INCLUDE(CMakeParseArguments)
 #
 #   ``<exeRootName>``
 #
-#     The root name of the exectuable (and CMake target) (see `Executable and
+#     The root name of the executable (and CMake target) (see `Executable and
 #     Target Name (TRIBITS_ADD_EXECUTABLE())`_).  This must be the first
 #     argument.
 #
@@ -114,7 +114,7 @@ INCLUDE(CMakeParseArguments)
 #     If passed in, the directory path relative to the package's base
 #     directory (with "/" replaced by "_") is added to the executable name
 #     (see `Executable and Target Name (TRIBITS_ADD_EXECUTABLE())`_).  This
-#     provides a simple way to create unique test exectuable names inside of a
+#     provides a simple way to create unique test executable names inside of a
 #     given TriBITS package.  Only test executables in the same directory
 #     would need to have unique ``<execRootName>`` passed in.
 #
@@ -253,7 +253,7 @@ INCLUDE(CMakeParseArguments)
 #     set with the name of the executable target passed to
 #     ``ADD_EXECUTABLE(<exeTargetName> ... )``.  Having this name allows the
 #     calling ``CMakeLists.txt`` file access and set additional target
-#     propeties (see `Additional Executable and Source File Properties
+#     properties (see `Additional Executable and Source File Properties
 #     (TRIBITS_ADD_EXECUTABLE())`_).
 #
 # .. _Executable and Target Name (TRIBITS_ADD_EXECUTABLE()):
@@ -278,7 +278,7 @@ INCLUDE(CMakeParseArguments)
 # added to the actual executable file name if the option ``NOEXESUFFIX`` is
 # *not* passed in but this suffix is never added to the target name.
 # (However, note that on Windows platforms, the default ``*.exe`` extension is
-# always added because windows will not run an exectuable in many contexts
+# always added because windows will not run an executable in many contexts
 # unless it has the ``*.exe`` extension.)
 #
 # The reason that a default prefix is prepended to the executable and target
@@ -334,6 +334,41 @@ FUNCTION(TRIBITS_ADD_EXECUTABLE EXE_NAME)
     MESSAGE("")
     MESSAGE("TRIBITS_ADD_EXECUTABLE: ${EXE_NAME} ${ARGN}")
   ENDIF()
+  
+  #
+  # Confirm that package and subpackage macros/functions have been called inteh correct order
+  #
+  
+  IF (CURRENTLY_PROCESSING_SUBPACKAGE)
+
+    # This is a subpackage being processed
+
+    IF(NOT ${SUBPACKAGE_FULLNAME}_TRIBITS_SUBPACKAGE_CALLED)
+      MESSAGE(FATAL_ERROR "Must call TRIBITS_SUBPACKAGE() before TRIBITS_ADD_EXECUTABLE()"
+        " in ${CURRENT_SUBPACKAGE_CMAKELIST_FILE}")
+    ENDIF()
+
+    IF(${SUBPACKAGE_FULLNAME}_TRIBITS_SUBPACKAGE_POSTPROCESS_CALLED)
+      MESSAGE(FATAL_ERROR "Must call TRIBITS_ADD_EXECUTABLE() before "
+        " TRIBITS_SUBPACKAGE_POSTPROCESS() in ${CURRENT_SUBPACKAGE_CMAKELIST_FILE}")
+    ENDIF()
+
+  ELSE()
+
+    # This is a package being processed
+
+    IF(NOT ${PACKAGE_NAME}_TRIBITS_PACKAGE_CALLED)
+      MESSAGE(FATAL_ERROR "Must call TRIBITS_PACKAGE() before TRIBITS_ADD_EXECUTABLE()"
+        " in ${TRIBITS_PACKAGE_CMAKELIST_FILE}")
+    ENDIF()
+
+    IF(${PACKAGE_NAME}_TRIBITS_PACKAGE_POSTPROCESS_CALLED)
+      MESSAGE(FATAL_ERROR "Must call TRIBITS_ADD_EXECUTABLE() before "
+        " TRIBITS_PACKAGE_POSTPROCESS() in ${TRIBITS_PACKAGE_CMAKELIST_FILE}")
+    ENDIF()
+
+  ENDIF()
+
 
   #
   # A) Parse the input arguments
@@ -351,11 +386,14 @@ FUNCTION(TRIBITS_ADD_EXECUTABLE EXE_NAME)
     ${ARGN}
     )
 
+  TRIBITS_CHECK_FOR_UNPARSED_ARGUMENTS()
+
   IF(PARSE_ADDED_EXE_TARGET_NAME_OUT)
     SET(${PARSE_ADDED_EXE_TARGET_NAME_OUT} PARENT_SCOPE)
   ENDIF()
+
   #
-  # B) Exclude building the test executable based on some several criteria
+  # B) Exclude building the test executable based on some criteria
   #
 
   SET(ADD_THE_TEST FALSE)
@@ -401,6 +439,14 @@ FUNCTION(TRIBITS_ADD_EXECUTABLE EXE_NAME)
 
   IF(DEFINED PACKAGE_NAME AND NOT PARSE_NOEXEPREFIX)
     SET(EXE_BINARY_NAME ${PACKAGE_NAME}_${EXE_BINARY_NAME})
+  ENDIF()
+
+  # Exclude the build if requested
+  IF (${EXE_BINARY_NAME}_EXE_DISABLE)
+    MESSAGE("-- "
+      "${EXE_BINARY_NAME} EXE NOT being built due to ${EXE_BINARY_NAME}_EXE_DISABLE="
+      "'${${EXE_BINARY_NAME}_EXE_DISABLE}'")
+    RETURN()
   ENDIF()
 
   # If exe is in subdirectory prepend that dir name to the source files

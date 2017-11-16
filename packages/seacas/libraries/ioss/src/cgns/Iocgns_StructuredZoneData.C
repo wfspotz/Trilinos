@@ -1,6 +1,39 @@
+// Copyright(C) 1999-2010 National Technology & Engineering Solutions
+// of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+// NTESS, the U.S. Government retains certain rights in this software.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//
+//     * Redistributions in binary form must reproduce the above
+//       copyright notice, this list of conditions and the following
+//       disclaimer in the documentation and/or other materials provided
+//       with the distribution.
+//
+//     * Neither the name of NTESS nor the names of its
+//       contributors may be used to endorse or promote products derived
+//       from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include <algorithm>
 #include <cgns/Iocgns_StructuredZoneData.h>
 
+#define IOSS_DEBUG_OUTPUT 0
 #define OUTPUT std::cerr
 
 namespace {
@@ -149,7 +182,9 @@ namespace {
   void propogate_zgc(Iocgns::StructuredZoneData *parent, Iocgns::StructuredZoneData *child,
                      int ordinal)
   {
-    OUTPUT << "Propogating ZGC from " << parent->m_name << " to " << child->m_name << "\n";
+#ifdef IOSS_DEBUG_OUTPUT
+    OUTPUT << "\t\tPropogating ZGC from " << parent->m_name << " to " << child->m_name << "\n";
+#endif
     for (auto zgc : parent->m_zoneConnectivity) {
       if (!zgc.m_intraBlock || zgc_overlaps(child, zgc)) {
         // Modify source and donor range to subset it to new block ranges.
@@ -158,9 +193,11 @@ namespace {
         child->m_zoneConnectivity.push_back(zgc);
       }
       else {
+#ifdef IOSS_DEBUG_OUTPUT
         OUTPUT << "\t\t" << zgc.m_donorName << ":\tName '" << zgc.m_connectionName
                << " does not overlap."
                << "\n";
+#endif
       }
     }
   }
@@ -268,6 +305,7 @@ namespace Iocgns {
     m_child2->m_splitOrdinal        = ordinal;
     m_child2->m_sibling             = m_child1;
 
+#ifdef IOSS_DEBUG_OUTPUT
     OUTPUT << "Zone " << m_zone << "(" << m_adam->m_zone << ") with intervals " << m_ordinal[0]
            << " " << m_ordinal[1] << " " << m_ordinal[2] << " work = " << work() << " with offset "
            << m_offset[0] << " " << m_offset[1] << " " << m_offset[2] << " split along ordinal "
@@ -282,6 +320,7 @@ namespace Iocgns {
            << m_child2->m_ordinal[2] << " work = " << m_child2->work() << " with offset "
            << m_child2->m_offset[0] << " " << m_child2->m_offset[1] << " " << m_child2->m_offset[2]
            << "\n";
+#endif
 
     // Add ZoneGridConnectivity instance to account for split...
     add_split_zgc(this, m_child1, m_child2, ordinal);

@@ -57,20 +57,9 @@ namespace MueLu {
   template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
   RCP<const ParameterList> VariableDofLaplacianFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::GetValidParameterList() const {
     RCP<ParameterList> validParamList = rcp(new ParameterList());
-/*
-#define SET_VALID_ENTRY(name) validParamList->setEntry(name, MasterList::getEntry(name))
-    SET_VALID_ENTRY("aggregation: drop tol");
-    SET_VALID_ENTRY("aggregation: Dirichlet threshold");
-    SET_VALID_ENTRY("aggregation: drop scheme");
-    {
-      typedef Teuchos::StringToIntegralParameterEntryValidator<int> validatorType;
-      validParamList->getEntry("aggregation: drop scheme").setValidator(
-        rcp(new validatorType(Teuchos::tuple<std::string>("classical", "distance laplacian"), "aggregation: drop scheme")));
-    }
-#undef  SET_VALID_ENTRY
-    validParamList->set< bool >                  ("lightweight wrap",           true, "Experimental option for lightweight graph access");
-*/
 
+    validParamList->set< double >                ("Advanced Dirichlet: threshold", 1e-5, "Drop tolerance for Dirichlet detection");
+    validParamList->set< double >                ("Variable DOF amalgamation: threshold", 1.8e-9, "Drop tolerance for amalgamation process");
     validParamList->set< int >                   ("maxDofPerNode", 1, "Maximum number of DOFs per node");
 
     validParamList->set< RCP<const FactoryBase> >("A",                  Teuchos::null, "Generating factory of the matrix A");
@@ -84,7 +73,6 @@ namespace MueLu {
 
   template <class Scalar,class LocalOrdinal, class GlobalOrdinal, class Node>
   void VariableDofLaplacianFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::DeclareInput(Level &currentLevel) const {
-    //const ParameterList& pL = GetParameterList();
     Input(currentLevel, "A");
     Input(currentLevel, "Coordinates");
 
@@ -110,14 +98,20 @@ namespace MueLu {
     RCP<dxMV> Coords = Get< RCP<Xpetra::MultiVector<double,LO,GO,NO> > >(currentLevel, "Coordinates");
 
     int maxDofPerNode = pL.get<int>("maxDofPerNode");
-    Scalar dirDropTol = 1e-5; // TODO parameter from parameter list ("ML advnaced Dirichlet: threshold"), should be magnitude type?
-    Scalar amalgDropTol = 1.8e-9; // TODO parameter from parameter list ("variable DOF amalgamation: threshold")
+    Scalar dirDropTol = Teuchos::as<Scalar>(pL.get<double>("Advanced Dirichlet: threshold")); // "ML advnaced Dirichlet: threshold"
+    Scalar amalgDropTol = Teuchos::as<Scalar>(pL.get<double>("Variable DOF amalgamation: threshold")); //"variable DOF amalgamation: threshold")
 
     bool bHasZeroDiagonal = false;
     Teuchos::ArrayRCP<const bool> dirOrNot = MueLu::Utilities<Scalar, LocalOrdinal, GlobalOrdinal, Node>::DetectDirichletRowsExt(*A,bHasZeroDiagonal,STS::magnitude(dirDropTol));
 
-    // TODO check availability + content (length)
-    Teuchos::ArrayRCP<const bool> dofPresent = currentLevel.Get< Teuchos::ArrayRCP<const bool> >("DofPresent", NoFactory::get());
+    // check availability of DofPresent array
+    Teuchos::ArrayRCP<LocalOrdinal> dofPresent;
+    if (currentLevel.IsAvailable("DofPresent", NoFactory::get())) {
+      dofPresent = currentLevel.Get< Teuchos::ArrayRCP<LocalOrdinal> >("DofPresent", NoFactory::get());
+    } else {
+      // TAW: not sure about size of array. We cannot determine the expected size in the non-padded case correctly...
+      dofPresent = Teuchos::ArrayRCP<LocalOrdinal>(A->getRowMap()->getNodeNumElements(),1);
+    }
 
     // map[k] indicates that the kth dof in the variable dof matrix A would
     // correspond to the map[k]th dof in the padded system. If, i.e., it is
@@ -128,14 +122,14 @@ namespace MueLu {
     std::vector<LocalOrdinal> map(A->getNodeNumRows());
     this->buildPaddedMap(dofPresent, map, A->getNodeNumRows());
 
-    //GetOStream(Parameters0) << "lightweight wrap = " << doExperimentalWrap << std::endl;
-
     // map of size of number of DOFs containing local node id (dof id -> node id, inclusive ghosted dofs/nodes)
     std::vector<LocalOrdinal> myLocalNodeIds(A->getColMap()->getNodeNumElements()); // possible maximum (we need the ghost nodes, too)
 
     // assign the local node ids for the ghosted nodes
     size_t nLocalNodes, nLocalPlusGhostNodes;
     this->assignGhostLocalNodeIds(A->getRowMap(), A->getColMap(), myLocalNodeIds, map, maxDofPerNode, nLocalNodes, nLocalPlusGhostNodes, comm);
+
+    //RCP<Teuchos::FancyOStream> fancy = Teuchos::fancyOStream(Teuchos::rcpFromRef(std::cout)," ",0,false,10,false, true);
 
     TEUCHOS_TEST_FOR_EXCEPTION(Teuchos::as<size_t>(dofPresent.size()) != Teuchos::as<size_t>(nLocalNodes * maxDofPerNode),MueLu::Exceptions::RuntimeError,"VariableDofLaplacianFactory: size of provided DofPresent array is " << dofPresent.size() << " but should be " << nLocalNodes * maxDofPerNode << " on the current processor.");
 
@@ -163,22 +157,27 @@ namespace MueLu {
       count++;
     }
 
-    // dofs belonging to the same node must be consecutively only for the local part of myLocalNodeIds[]
-    // fill amalgRowMapGIDs + local part of amalgColMapGIDs
     for(size_t i = 1; i < nLocalDofs; i++) {
-      if(myLocalNodeIds[i] != myLocalNodeIds[i-1]) {
-        amalgRowMapGIDs[count] = myGids[i];
-        count++;
-      }
+       if (myLocalNodeIds[i] != myLocalNodeIds[i-1]) {
+          amalgRowMapGIDs[count] = myGids[i];
+          amalgColMapGIDs[count] = myGids[i];
+          count++;
+       }
     }
 
-    size_t count2 = 1;
-    for(size_t i = 1; i < myLocalNodeIds.size(); i++) {
-      if(myLocalNodeIds[i] != myLocalNodeIds[i-1]) {
-        amalgColMapGIDs[count2] = myGids[i];
-        count2++;
-      }
-    }
+    RCP<GOVector> tempAmalgColVec = GOVectorFactory::Build(A->getDomainMap());
+    Teuchos::ArrayRCP<GlobalOrdinal> tempAmalgColVecData = tempAmalgColVec->getDataNonConst(0);
+    for (size_t i = 0; i < A->getDomainMap()->getNodeNumElements(); i++)
+      tempAmalgColVecData[i] = amalgColMapGIDs[ myLocalNodeIds[i]];
+
+    RCP<GOVector> tempAmalgColVecTarget = GOVectorFactory::Build(A->getColMap());
+    Teuchos::RCP<Import> dofImporter = ImportFactory::Build(A->getDomainMap(), A->getColMap());
+    tempAmalgColVecTarget->doImport(*tempAmalgColVec, *dofImporter, Xpetra::INSERT);
+    Teuchos::ArrayRCP<const GlobalOrdinal> tempAmalgColVecBData = tempAmalgColVecTarget->getData(0);
+
+    // copy from dof vector to nodal vector
+    for (size_t i = 0; i < myLocalNodeIds.size(); i++)
+       amalgColMapGIDs[ myLocalNodeIds[i]] = tempAmalgColVecBData[i];
 
     Teuchos::RCP<Map> amalgRowMap = MapFactory::Build(lib,
                Teuchos::OrdinalTraits<GlobalOrdinal>::invalid(),
@@ -192,7 +191,6 @@ namespace MueLu {
                A->getRangeMap()->getIndexBase(),
                comm);
 
-    //RCP<Teuchos::FancyOStream> fancy = Teuchos::fancyOStream(Teuchos::rcpFromRef(std::cout));
     // end fill nodal maps
 
 
@@ -211,7 +209,6 @@ namespace MueLu {
     // create arrays for amalgamated matrix
     Teuchos::ArrayRCP<size_t> amalgRowPtr(nLocalNodes+1);
     Teuchos::ArrayRCP<LocalOrdinal> amalgCols(rowptr[rowptr.size()-1]);
-    //Teuchos::ArrayRCP<const Scalar> values(Acrs->getNodeNumEntries());
 
     size_t nNonZeros = 0;
     std::vector<bool> isNonZero(nLocalPlusGhostDofs,false);
@@ -221,12 +218,13 @@ namespace MueLu {
     Teuchos::RCP<Vector> diagVecUnique = VectorFactory::Build(A->getRowMap());
     Teuchos::RCP<Vector> diagVec       = VectorFactory::Build(A->getColMap());
     A->getLocalDiagCopy(*diagVecUnique);
-    Teuchos::RCP<Import> dofImporter = ImportFactory::Build(diagVecUnique->getMap(), diagVec->getMap());
     diagVec->doImport(*diagVecUnique, *dofImporter, Xpetra::INSERT);
     Teuchos::ArrayRCP< const Scalar > diagVecData = diagVec->getData(0);
 
     LocalOrdinal oldBlockRow = 0;
-    LocalOrdinal blockRow, blockColumn;
+    LocalOrdinal blockRow = 0;
+    LocalOrdinal blockColumn = 0;
+
     size_t newNzs = 0;
     amalgRowPtr[0] = newNzs;
 
@@ -262,7 +260,6 @@ namespace MueLu {
     amalgCols.resize(amalgRowPtr[nLocalNodes]);
 
     // end variableDofAmalg
-
 
     // begin rm differentDofsCrossings
 
@@ -320,9 +317,8 @@ namespace MueLu {
     }
 
     // squeeze out hard-coded zeros from CSR arrays
-    Teuchos::ArrayRCP<Scalar> amalgVals; //(/*rowptr[rowptr.size()-1]*/); // empty array!
+    Teuchos::ArrayRCP<Scalar> amalgVals;
     this->squeezeOutNnzs(amalgRowPtr,amalgCols,amalgVals,keep);
-
 
     typedef Xpetra::MultiVectorFactory<double,LO,GO,NO> dxMVf;
     RCP<dxMV> ghostedCoords = dxMVf::Build(amalgColMap,Coords->getNumVectors());
@@ -347,7 +343,24 @@ namespace MueLu {
       this->MueLu_az_sort<LocalOrdinal>(&(amalgCols[j]), amalgRowPtr[i+1] - j, NULL, &(lapVals[j]));
     }
 
-    // TODO status array?
+    // Caluclate status array for next level
+    Teuchos::Array<char> status(nLocalNodes * maxDofPerNode);
+
+    // dir or not Teuchos::ArrayRCP<const bool> dirOrNot
+    for(decltype(status.size()) i = 0; i < status.size(); i++) status[i] = 's';
+    for(decltype(status.size()) i = 0; i < status.size(); i++) {
+      if(dofPresent[i] == false) status[i] = 'p';
+    }
+    if(dirOrNot.size() > 0) {
+      for(decltype(map.size()) i = 0; i < map.size(); i++) {
+        if(dirOrNot[i] == true){
+          status[map[i]] = 'd';
+        }
+      }
+    }
+    Set(currentLevel,"DofStatus",status);
+
+    // end status array
 
     Teuchos::RCP<CrsMatrix> lapCrsMat = CrsMatrixFactory::Build(amalgRowMap, amalgColMap, 10); // TODO better approx for max nnz per row
 
@@ -356,6 +369,8 @@ namespace MueLu {
           lapVals.view(amalgRowPtr[i],amalgRowPtr[i+1]-amalgRowPtr[i]));
     }
     lapCrsMat->fillComplete(amalgRowMap,amalgRowMap);
+
+    //lapCrsMat->describe(*fancy, Teuchos::VERB_EXTREME);
 
     Teuchos::RCP<Matrix> lapMat = Teuchos::rcp(new CrsMatrixWrap(lapCrsMat));
     Set(currentLevel,"A",lapMat);
@@ -451,10 +466,10 @@ namespace MueLu {
   }
 
   template <class Scalar,class LocalOrdinal, class GlobalOrdinal, class Node>
-  void VariableDofLaplacianFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::buildPaddedMap(const Teuchos::ArrayRCP<const bool> & dofPresent, std::vector<LocalOrdinal> & map, size_t nDofs) const {
+  void VariableDofLaplacianFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::buildPaddedMap(const Teuchos::ArrayRCP<const LocalOrdinal> & dofPresent, std::vector<LocalOrdinal> & map, size_t nDofs) const {
     size_t count = 0;
     for (decltype(dofPresent.size()) i = 0; i < dofPresent.size(); i++)
-      if(dofPresent[i] == true) map[count++] = Teuchos::as<LocalOrdinal>(i);
+      if(dofPresent[i] == 1) map[count++] = Teuchos::as<LocalOrdinal>(i);
     TEUCHOS_TEST_FOR_EXCEPTION(nDofs != count, MueLu::Exceptions::RuntimeError, "VariableDofLaplacianFactory::buildPaddedMap: #dofs in dofPresent does not match the expected value (number of rows of A): " << nDofs << " vs. " << count);
   }
 
@@ -554,9 +569,8 @@ namespace MueLu {
     // local node ids
 
     // loop over all (remaining) ghost dofs
-    size_t lagged = -1;
     for (size_t i = nLocalDofs+1; i < nLocalPlusGhostDofs; i++) {
-      lagged = nLocalPlusGhostNodes-1;
+      size_t lagged = nLocalPlusGhostNodes-1;
 
       // i is a new unique ghost node (not already accounted for)
       if ((tempId[i-nLocalDofs] != tempId[i-1-nLocalDofs]) ||

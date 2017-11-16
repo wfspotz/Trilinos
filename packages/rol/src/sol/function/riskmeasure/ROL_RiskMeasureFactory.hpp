@@ -71,10 +71,14 @@
 #include "ROL_QuantileRadiusQuadrangle.hpp"
 #include "ROL_SmoothedWorstCaseQuadrangle.hpp"
 #include "ROL_TruncatedMeanQuadrangle.hpp"
+#include "ROL_GenMoreauYosidaCVaR.hpp"
 
 // F-Divergence Distributionally Robust Risk Measure Implementations
 #include "ROL_Chi2Divergence.hpp"
 #include "ROL_KLDivergence.hpp"
+
+// Buffered Probability Implementation
+#include "ROL_BPOE.hpp"
 
 namespace ROL {
 
@@ -88,6 +92,7 @@ namespace ROL {
     RISKMEASURE_MEANVARIANCEFROMTARGET,
     RISKMEASURE_MEANVARIANCE,
     RISKMEASURE_MOREAUYOSIDACVAR,
+    RISKMEASURE_GENMOREAUYOSIDACVAR,
     RISKMEASURE_LOGEXPONENTIALQUADRANGLE,
     RISKMEASURE_LOGQUANTILEQUADRANGLE,
     RISKMEASURE_MEANVARIANCEQUADRANGLE,
@@ -101,6 +106,7 @@ namespace ROL {
     RISKMEASURE_TRUNCATEDMEANQUADRANGLE,
     RISKMEASURE_CHI2DIVERGENCE,
     RISKMEASURE_KLDIVERGENCE,
+    RISKMEASURE_BPOE,
     RISKMEASURE_LAST
   };
 
@@ -125,6 +131,8 @@ namespace ROL {
              retString = "Mean Plus Variance";                      break;
       case RISKMEASURE_MOREAUYOSIDACVAR:
              retString = "Moreau-Yosida CVaR";                      break;
+      case RISKMEASURE_GENMOREAUYOSIDACVAR:
+             retString = "Generalized Moreau-Yosida CVaR";          break;
       case RISKMEASURE_LOGEXPONENTIALQUADRANGLE:
              retString = "Log-Exponential Quadrangle";              break;
       case RISKMEASURE_LOGQUANTILEQUADRANGLE:
@@ -151,6 +159,8 @@ namespace ROL {
              retString = "Chi-Squared Divergence";                  break;
       case RISKMEASURE_KLDIVERGENCE:
              retString = "KL Divergence";                           break;
+      case RISKMEASURE_BPOE:
+             retString = "bPOE";                                    break;
       case RISKMEASURE_LAST:
              retString = "Last Type (Dummy)";                       break;
       default:
@@ -169,6 +179,7 @@ namespace ROL {
             (ed == RISKMEASURE_MEANVARIANCEFROMTARGET) ||
             (ed == RISKMEASURE_MEANVARIANCE) ||
             (ed == RISKMEASURE_MOREAUYOSIDACVAR) ||
+            (ed == RISKMEASURE_GENMOREAUYOSIDACVAR) ||
             (ed == RISKMEASURE_LOGEXPONENTIALQUADRANGLE) ||
             (ed == RISKMEASURE_LOGQUANTILEQUADRANGLE) ||
             (ed == RISKMEASURE_MEANVARIANCEQUADRANGLE) ||
@@ -181,7 +192,8 @@ namespace ROL {
             (ed == RISKMEASURE_SMOOTHEDWORSTCASEQUADRANGLE) ||
             (ed == RISKMEASURE_TRUNCATEDMEANQUADRANGLE) ||
             (ed == RISKMEASURE_CHI2DIVERGENCE) ||
-            (ed == RISKMEASURE_KLDIVERGENCE) );
+            (ed == RISKMEASURE_KLDIVERGENCE) ||
+            (ed == RISKMEASURE_BPOE) );
   }
 
   inline ERiskMeasure & operator++(ERiskMeasure &type) {
@@ -237,6 +249,8 @@ namespace ROL {
              return Teuchos::rcp(new MeanVariance<Real>(parlist));
       case RISKMEASURE_MOREAUYOSIDACVAR:
              return Teuchos::rcp(new MoreauYosidaCVaR<Real>(parlist));
+      case RISKMEASURE_GENMOREAUYOSIDACVAR:
+             return Teuchos::rcp(new GenMoreauYosidaCVaR<Real>(parlist));
       case RISKMEASURE_LOGEXPONENTIALQUADRANGLE:
              return Teuchos::rcp(new LogExponentialQuadrangle<Real>(parlist));
       case RISKMEASURE_LOGQUANTILEQUADRANGLE:
@@ -263,6 +277,8 @@ namespace ROL {
              return Teuchos::rcp(new Chi2Divergence<Real>(parlist));
       case RISKMEASURE_KLDIVERGENCE:
              return Teuchos::rcp(new KLDivergence<Real>(parlist));
+      case RISKMEASURE_BPOE:
+             return Teuchos::rcp(new BPOE<Real>(parlist));
       default:
         TEUCHOS_TEST_FOR_EXCEPTION(true,std::invalid_argument,
                                    "Invalid risk measure type " << risk << "!");

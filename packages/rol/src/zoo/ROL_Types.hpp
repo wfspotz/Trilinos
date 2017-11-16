@@ -76,14 +76,40 @@
 
 namespace ROL {
 
-template<class T>
-std::string NumberToString( T Number )
-{
-  std::ostringstream ss;
-  ss << Number;
-  return ss.str();
-}
+  template<class T>
+  std::string NumberToString( T Number )
+  {
+    std::ostringstream ss;
+    ss << Number;
+    return ss.str();
+  }
 
+  /** \brief  Platform-dependent machine epsilon.
+   */
+  template<class Real>
+  inline Real ROL_EPSILON(void) { return std::abs(Teuchos::ScalarTraits<Real>::eps()); }
+  //static const Real ROL_EPSILON<Real>() = std::abs(Teuchos::ScalarTraits<Real>::eps());
+
+  /** \brief  Tolerance for various equality tests.
+   */
+  template<class Real>
+  inline Real ROL_THRESHOLD(void) { return 10.0 * ROL_EPSILON<Real>(); }
+
+  /** \brief  Platform-dependent maximum double.
+   */
+  template<class Real>
+  inline Real ROL_OVERFLOW(void) { return std::abs(Teuchos::ScalarTraits<Real>::rmax()); }
+
+  template<class Real>
+  inline Real ROL_INF(void) { return 0.1*ROL_OVERFLOW<Real>(); }
+
+  template<class Real>
+  inline Real ROL_NINF(void) { return -ROL_INF<Real>(); }
+
+  /** \brief  Platform-dependent minimum double.
+   */
+  template<class Real>
+  inline Real ROL_UNDERFLOW(void) { return std::abs(Teuchos::ScalarTraits<Real>::rmin()); }
 
   /** \brief  State for algorithm class.  Will be used for restarts.
    */
@@ -94,7 +120,7 @@ std::string NumberToString( T Number )
     int  nfval;
     int  ncval;
     int  ngrad;
-    Real value;              
+    Real value;
     Real minValue;
     Real gnorm;
     Real cnorm;
@@ -105,6 +131,7 @@ std::string NumberToString( T Number )
     Teuchos::RCP<Vector<Real> > iterateVec;
     Teuchos::RCP<Vector<Real> > lagmultVec;
     Teuchos::RCP<Vector<Real> > minIterVec;
+
     AlgorithmState(void) : iter(0), minIter(0), nfval(0), ngrad(0), value(0), minValue(0), 
       gnorm(std::numeric_limits<Real>::max()),
       cnorm(std::numeric_limits<Real>::max()),
@@ -113,10 +140,35 @@ std::string NumberToString( T Number )
       aggregateModelError(std::numeric_limits<Real>::max()),
       flag(false),
       iterateVec(Teuchos::null), lagmultVec(Teuchos::null), minIterVec(Teuchos::null) {}
-  };  
-  
+
+    void reset(void) {
+      iter                  = 0;
+      minIter               = 0;
+      nfval                 = 0;
+      ncval                 = 0;
+      ngrad                 = 0;
+      value                 = ROL_INF<Real>();
+      minValue              = ROL_INF<Real>();
+      gnorm                 = ROL_INF<Real>();
+      cnorm                 = ROL_INF<Real>();
+      snorm                 = ROL_INF<Real>();
+      aggregateGradientNorm = ROL_INF<Real>();
+      aggregateModelError   = ROL_INF<Real>();
+      flag                  = false;
+      if (iterateVec != Teuchos::null) {
+        iterateVec->zero();
+      }
+      if (lagmultVec != Teuchos::null) {
+        lagmultVec->zero();
+      }
+      if (minIterVec != Teuchos::null) {
+        minIterVec->zero();
+      }
+    }
+  };
+
   /** \brief  State for step class.  Will be used for restarts.
-   */  
+   */
   template<class Real>
   struct StepState {
     Teuchos::RCP<Vector<Real> > gradientVec;
@@ -125,45 +177,29 @@ std::string NumberToString( T Number )
     int nfval;
     int ngrad;
     Real searchSize; // line search parameter (alpha) or trust-region radius (delta)
+
     StepState(void) : gradientVec(Teuchos::null),
                       descentVec(Teuchos::null),
                       constraintVec(Teuchos::null),
                       nfval(0),
                       ngrad(0),
                       searchSize(0) {}
-  };  
-      
-  /** \brief  Platform-dependent machine epsilon. 
-   */
-  template<class Real>
-  inline Real ROL_EPSILON(void) { return std::abs(Teuchos::ScalarTraits<Real>::eps()); }
-  //static const Real ROL_EPSILON<Real>() = std::abs(Teuchos::ScalarTraits<Real>::eps());
-    
-  /** \brief  Tolerance for various equality tests.
-   */
-  template<class Real>
-  inline Real ROL_THRESHOLD(void) { return 10.0 * ROL_EPSILON<Real>(); }
-  //static const Real ROL_THRESHOLD = 10.0 * ROL_EPSILON<Real>()<Real>;
 
-  /** \brief  Platform-dependent maximum double.
-   */ 
-  template<class Real>
-  inline Real ROL_OVERFLOW(void) { return std::abs(Teuchos::ScalarTraits<Real>::rmax()); }
-  //static const double ROL_OVERFLOW  = std::abs(Teuchos::ScalarTraits<double>::rmax());
-
-  template<class Real>
-  inline Real ROL_INF(void) { return 0.1*ROL_OVERFLOW<Real>(); }
-  //static const double ROL_INF<Real>()  = 0.1*ROL_OVERFLOW;
-
-  template<class Real>
-  inline Real ROL_NINF(void) { return -ROL_INF<Real>(); }
-  //static const double ROL_NINF<Real>() = -ROL_INF<Real>();
-
-  /** \brief  Platform-dependent minimum double.
-   */ 
-  template<class Real>
-  inline Real ROL_UNDERFLOW(void) { return std::abs(Teuchos::ScalarTraits<Real>::rmin()); }
-  //static const double ROL_UNDERFLOW  = std::abs(Teuchos::ScalarTraits<double>::rmin());
+    void reset(const Real searchSizeInput = 1.0) {
+      if (gradientVec != Teuchos::null) {
+        gradientVec->zero();
+      }
+      if (descentVec != Teuchos::null) {
+        descentVec->zero();
+      }
+      if (constraintVec != Teuchos::null) {
+        constraintVec->zero();
+      }
+      nfval = 0;
+      ngrad = 0;
+      searchSize = searchSizeInput;
+    }
+  };
 
   struct removeSpecialCharacters {
     bool operator()(char c) {
@@ -227,29 +263,33 @@ std::string NumberToString( T Number )
     return retString;
   }
 
-  inline int isCompatibleStep( EProblem p, EStep s ) {
-    int comp;
+  inline bool isCompatibleStep( EProblem p, EStep s ) {
+    bool comp = false;
     switch(p) {
 
       case TYPE_U:    comp = ( (s == STEP_LINESEARCH) ||
-                                (s == STEP_TRUSTREGION) );
+                               (s == STEP_TRUSTREGION) ||
+                               (s == STEP_BUNDLE) );
         break;
 
       case TYPE_B:    comp = ( (s == STEP_LINESEARCH)  ||
-                                (s == STEP_TRUSTREGION) || 
-                                (s == STEP_MOREAUYOSIDAPENALTY) );
+                               (s == STEP_TRUSTREGION) ||
+                               (s == STEP_MOREAUYOSIDAPENALTY) ||
+                               (s == STEP_PRIMALDUALACTIVESET) ||
+                               (s == STEP_INTERIORPOINT) );
         break;
 
-      case TYPE_E:    comp = ( (s == STEP_COMPOSITESTEP) || 
-                                (s == STEP_AUGMENTEDLAGRANGIAN) );  
+      case TYPE_E:    comp = ( (s == STEP_COMPOSITESTEP) ||
+                               (s == STEP_AUGMENTEDLAGRANGIAN) );
         break;
 
-      case TYPE_EB:   comp = ( (s == STEP_AUGMENTEDLAGRANGIAN) || 
-                                (s == STEP_MOREAUYOSIDAPENALTY) );
+      case TYPE_EB:   comp = ( (s == STEP_AUGMENTEDLAGRANGIAN) ||
+                               (s == STEP_MOREAUYOSIDAPENALTY) ||
+                               (s == STEP_INTERIORPOINT) );
         break;
 
-      case TYPE_LAST: comp = 0; break;
-      default:        comp = 0;      
+      case TYPE_LAST: comp = false; break;
+      default:        comp = false;
     }
     return comp;
   }
@@ -306,80 +346,12 @@ std::string NumberToString( T Number )
 
   inline EStep StringToEStep(std::string s) {
     s = removeStringFormat(s);
-    for ( EStep tr = STEP_AUGMENTEDLAGRANGIAN; tr < STEP_LAST; tr++ ) {
-      if ( !s.compare(removeStringFormat(EStepToString(tr))) ) {
-        return tr;
+    for ( EStep st = STEP_AUGMENTEDLAGRANGIAN; st < STEP_LAST; ++st ) {
+      if ( !s.compare(removeStringFormat(EStepToString(st))) ) {
+        return st;
       }
     }
-    return STEP_TRUSTREGION;
-  }
-
-  /** \enum   ROL::EBoundAlgorithm
-      \brief  Enumeration of algorithms to handle bound constraints.
-
-      \arg    PROJECTED             describe
-      \arg    PRIMALDUALACTIVESET   describe
-      \arg    INTERIORPOINTS        describe
-   */
-  enum EBoundAlgorithm{
-    BOUNDALGORITHM_PROJECTED = 0,
-    BOUNDALGORITHM_PRIMALDUALACTIVESET,
-    BOUNDALGORITHM_INTERIORPOINTS,
-    BOUNDALGORITHM_LAST
-  };
-
-  inline std::string EBoundAlgorithmToString(EBoundAlgorithm tr) {
-    std::string retString;
-    switch(tr) {
-      case BOUNDALGORITHM_PROJECTED:           retString = "Projected";              break;
-      case BOUNDALGORITHM_PRIMALDUALACTIVESET: retString = "Primal Dual Active Set"; break;
-      case BOUNDALGORITHM_INTERIORPOINTS:      retString = "Interior Points";        break;
-      case BOUNDALGORITHM_LAST:                retString = "Last Type (Dummy)";      break;
-      default:                                 retString = "INVALID EBoundAlgorithm";
-    }
-    return retString;
-  }
-
-  /** \brief  Verifies validity of a Bound Algorithm enum.
-    
-      \param  tr  [in]  - enum of the Bound Algorithm
-      \return 1 if the argument is a valid Bound Algorithm; 0 otherwise.
-    */
-  inline int isValidBoundAlgorithm(EBoundAlgorithm d){
-    return( (d == BOUNDALGORITHM_PROJECTED)           ||
-            (d == BOUNDALGORITHM_PRIMALDUALACTIVESET) || 
-            (d == BOUNDALGORITHM_INTERIORPOINTS)  
-          );
-  }
-
-  inline EBoundAlgorithm & operator++(EBoundAlgorithm &type) {
-    return type = static_cast<EBoundAlgorithm>(type+1);
-  }
-
-  inline EBoundAlgorithm operator++(EBoundAlgorithm &type, int) {
-    EBoundAlgorithm oldval = type;
-    ++type;
-    return oldval;
-  }
-
-  inline EBoundAlgorithm & operator--(EBoundAlgorithm &type) {
-    return type = static_cast<EBoundAlgorithm>(type-1);
-  }
-
-  inline EBoundAlgorithm operator--(EBoundAlgorithm &type, int) {
-    EBoundAlgorithm oldval = type;
-    --type;
-    return oldval;
-  }
-
-  inline EBoundAlgorithm StringToEBoundAlgorithm(std::string s) {
-    s = removeStringFormat(s);
-    for ( EBoundAlgorithm des = BOUNDALGORITHM_PROJECTED; des < BOUNDALGORITHM_LAST; des++ ) {
-      if ( !s.compare(removeStringFormat(EBoundAlgorithmToString(des))) ) {
-        return des;
-      }
-    }
-    return BOUNDALGORITHM_PROJECTED;
+    return STEP_LAST;
   }
 
   /** \enum   ROL::EDescent
@@ -1082,69 +1054,6 @@ std::string NumberToString( T Number )
     return TESTOPTPROBLEM_HS1;
   }
 
-
-  /** \enum   ROL::EConstraint
-      \brief  Enumeration of constraint types.
-
-      \arg    EQUALITY        describe
-      \arg    INEQUALITY      describe
-   */
-  enum EConstraint{
-    CONSTRAINT_EQUALITY = 0,
-    CONSTRAINT_INEQUALITY,
-    CONSTRAINT_LAST
-  };
-
-  inline std::string EConstraintToString(EConstraint c) {
-    std::string retString;
-    switch(c) {
-      case CONSTRAINT_EQUALITY:     retString = "Equality";                           break;
-      case CONSTRAINT_INEQUALITY:   retString = "Inequality";                         break;
-      case CONSTRAINT_LAST:         retString = "Last Type (Dummy)";                  break;
-      default:                      retString = "INVALID EConstraint";
-    }
-    return retString;
-  }
-
-  /** \brief  Verifies validity of a Secant enum.
-    
-      \param  c  [in]  - enum of the Secant
-      \return 1 if the argument is a valid Secant; 0 otherwise.
-    */
-  inline int isValidConstraint(EConstraint c){
-    return( (c == CONSTRAINT_EQUALITY)      ||
-            (c == CONSTRAINT_INEQUALITY) );
-  }
-
-  inline EConstraint & operator++(EConstraint &type) {
-    return type = static_cast<EConstraint>(type+1);
-  }
-
-  inline EConstraint operator++(EConstraint &type, int) {
-    EConstraint oldval = type;
-    ++type;
-    return oldval;
-  }
-
-  inline EConstraint & operator--(EConstraint &type) {
-    return type = static_cast<EConstraint>(type-1);
-  }
-
-  inline EConstraint operator--(EConstraint &type, int) {
-    EConstraint oldval = type;
-    --type;
-    return oldval;
-  }
-
-  inline EConstraint StringToEConstraint(std::string s) {
-    s = removeStringFormat(s);
-    for ( EConstraint ctype = CONSTRAINT_EQUALITY; ctype < CONSTRAINT_LAST; ctype++ ) {
-      if ( !s.compare(removeStringFormat(EConstraintToString(ctype))) ) {
-        return ctype;
-      }
-    }
-    return CONSTRAINT_EQUALITY;
-  }
 
   // For use in gradient and Hessian checks
   namespace Finite_Difference_Arrays {

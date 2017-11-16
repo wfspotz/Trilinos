@@ -47,7 +47,6 @@
 #ifndef PACKAGES_MUELU_SRC_GRAPH_MUELU_UNSMOOSHFACTORY_DEF_HPP_
 #define PACKAGES_MUELU_SRC_GRAPH_MUELU_UNSMOOSHFACTORY_DEF_HPP_
 
-
 #include "MueLu_Monitor.hpp"
 
 #include "MueLu_UnsmooshFactory_decl.hpp"
@@ -75,7 +74,11 @@ namespace MueLu {
     //const ParameterList& pL = GetParameterList();
     Input(fineLevel, "A");
     Input(coarseLevel, "P");
-    Input(fineLevel, "DofStatus");
+
+    // DofStatus only provided on the finest level (by user)
+    // On the coarser levels it is auto-generated using the DBC information from the unamalgamated matrix A
+    if(fineLevel.GetLevelID() == 0)
+      Input(fineLevel, "DofStatus");
   }
 
   template <class Scalar,class LocalOrdinal, class GlobalOrdinal, class Node>
@@ -85,22 +88,36 @@ namespace MueLu {
 
     const ParameterList  & pL = GetParameterList();
 
+    // extract matrices (unamalgamated A and amalgamated P)
     RCP<Matrix> unamalgA = Get< RCP<Matrix> >(fineLevel,   "A");
     RCP<Matrix> amalgP   = Get< RCP<Matrix> >(coarseLevel, "P");
 
-    //Teuchos::RCP< const Teuchos::Comm< int > > comm = amalgP->getRowMap()->getComm();
-    //Xpetra::UnderlyingLib lib = amalgP->getRowMap()->lib();
-
-    Teuchos::Array<char> dofStatus = Get<Teuchos::Array<char> >(fineLevel, "DofStatus");
-
-    TEUCHOS_TEST_FOR_EXCEPTION(amalgP->getDomainMap()->isSameAs(*amalgP->getColMap()) == false, MueLu::Exceptions::RuntimeError,"MueLu::UnsmooshFactory::Build: only support for non-overlapping aggregates. (column map of Ptent must be the same as domain map of Ptent)");
-
-    /*for (size_t i = 0; i < dofStatus.size(); i++) {
-      std::cout << i << " " << dofStatus[i] << std::endl;
-    }*/
-
+    // extract user parameters
     int maxDofPerNode = pL.get<int> ("maxDofPerNode");
     bool fineIsPadded = pL.get<bool>("fineIsPadded");
+
+    // get dofStatus information
+    // On the finest level it is provided by the user. On the coarser levels it is constructed
+    // using the DBC information of the matrix A
+    Teuchos::Array<char> dofStatus;
+    if(fineLevel.GetLevelID() == 0) {
+      dofStatus = Get<Teuchos::Array<char> >(fineLevel, "DofStatus");
+      TEUCHOS_TEST_FOR_EXCEPTION(Teuchos::as<size_t>(dofStatus.size()) == Teuchos::as<size_t>(unamalgA->getRowMap()->getNodeNumElements()), MueLu::Exceptions::RuntimeError,"MueLu::UnsmooshFactory::Build: User provided dofStatus on level 0 does not fit to size of unamalgamted A");
+    } else {
+      // dof status is the dirichlet information of unsmooshed/unamalgamated A (fine level)
+      dofStatus = Teuchos::Array<char>(unamalgA->getRowMap()->getNodeNumElements() /*amalgP->getRowMap()->getNodeNumElements() * maxDofPerNode*/,'s');
+
+      bool bHasZeroDiagonal = false;
+      Teuchos::ArrayRCP<const bool> dirOrNot = MueLu::Utilities<Scalar, LocalOrdinal, GlobalOrdinal, Node>::DetectDirichletRowsExt(*unamalgA,bHasZeroDiagonal,STS::magnitude(0.5));
+
+      TEUCHOS_TEST_FOR_EXCEPTION(dirOrNot.size() != dofStatus.size(), MueLu::Exceptions::RuntimeError,"MueLu::UnsmooshFactory::Build: inconsistent number of coarse DBC array and dofStatus array. dirOrNot.size() = " << dirOrNot.size() << " dofStatus.size() = " << dofStatus.size());
+      for(decltype(dirOrNot.size()) i = 0; i < dirOrNot.size(); ++i) {
+        if(dirOrNot[i] == true) dofStatus[i] = 'p';
+      }
+    }
+
+    // TODO: TAW the following check is invalid for SA-AMG based input prolongators
+    //TEUCHOS_TEST_FOR_EXCEPTION(amalgP->getDomainMap()->isSameAs(*amalgP->getColMap()) == false, MueLu::Exceptions::RuntimeError,"MueLu::UnsmooshFactory::Build: only support for non-overlapping aggregates. (column map of Ptent must be the same as domain map of Ptent)");
 
     // extract CRS information from amalgamated prolongation operator
     Teuchos::ArrayRCP<const size_t> amalgRowPtr(amalgP->getNodeNumRows());
@@ -119,7 +136,8 @@ namespace MueLu {
     Teuchos::ArrayRCP<Scalar> newPVals(amalgP->getNodeNumEntries() * maxDofPerNode);
 
     size_t rowCount = 0; // actual number of (local) in unamalgamated prolongator
-    if(fineIsPadded == true) {
+    if(fineIsPadded == true || fineLevel.GetLevelID() > 0) {
+
       // build prolongation operator for padded fine level matrices.
       // Note: padded fine level dofs are transfered by injection.
       // That is, these interpolation stencils do not take averages of
@@ -153,6 +171,7 @@ namespace MueLu {
       // at the status array and skip padded dofs.
 
       size_t cnt = 0; // local id counter
+
       for (decltype(amalgRowPtr.size()) i = 0; i < amalgRowPtr.size() - 1; i++) {
         // determine number of entries in amalgamated dof row i
         size_t rowLength = amalgRowPtr[i+1] - amalgRowPtr[i];
@@ -175,19 +194,16 @@ namespace MueLu {
           }
         }
       }
-
       newPRowPtr[rowCount] = cnt; // close row CSR array
     } // fineIsPadded == false
 
     // generate coarse domain map
-
     // So far no support for gid offset or strided maps. This information
     // could be gathered easily from the unamalgamated fine level operator A.
     std::vector<size_t> stridingInfo(1,maxDofPerNode);
 
-    GlobalOrdinal nCoarseDofs = amalgP->getDomainMap()->getGlobalNumElements() * maxDofPerNode;
+    GlobalOrdinal nCoarseDofs = amalgP->getDomainMap()->getNodeNumElements() * maxDofPerNode;
     GlobalOrdinal indexBase   = amalgP->getDomainMap()->getIndexBase();
-
     RCP<const Map> coarseDomainMap = StridedMapFactory::Build(amalgP->getDomainMap()->lib(),
         Teuchos::OrdinalTraits<Xpetra::global_size_t>::invalid(),
         nCoarseDofs,
@@ -197,14 +213,23 @@ namespace MueLu {
         -1 /* stridedBlockId */,
         0  /*domainGidOffset */);
 
+    size_t nColCoarseDofs = Teuchos::as<size_t>(amalgP->getColMap()->getNodeNumElements() * maxDofPerNode);
+    Teuchos::Array<GlobalOrdinal> unsmooshColMapGIDs(nColCoarseDofs);
+    for(size_t c = 0; c < amalgP->getColMap()->getNodeNumElements(); ++c) {
+      GlobalOrdinal gid = amalgP->getColMap()->getGlobalElement(c) * maxDofPerNode;
+      for(int i = 0; i < maxDofPerNode; ++i) {
+        unsmooshColMapGIDs[c * maxDofPerNode + i] = gid + i;
+      }
+    }
+    Teuchos::RCP<Map> coarseColMap = MapFactory::Build(amalgP->getDomainMap()->lib(),
+        Teuchos::OrdinalTraits<Xpetra::global_size_t>::invalid(),
+        unsmooshColMapGIDs(), //View,
+        indexBase,
+        amalgP->getDomainMap()->getComm());
+
     // Assemble unamalgamated P
-
-    // TODO think about maximum number of entries per row
-    // Does this work for more than on nullspace vectors?
-    // We assume non-overlapping aggreagtes, i.e., colmap = domainmap
-    Teuchos::RCP<CrsMatrix> unamalgPCrs = CrsMatrixFactory::Build(unamalgA->getRowMap(),coarseDomainMap, 1);
-
-    for (decltype(newPRowPtr.size()) i = 0; i < newPRowPtr.size() - 1; i++) {
+    Teuchos::RCP<CrsMatrix> unamalgPCrs = CrsMatrixFactory::Build(unamalgA->getRowMap(),coarseColMap, 3);
+    for (decltype(rowCount) i = 0; i < rowCount; i++) {
       unamalgPCrs->insertLocalValues(i, newPCols.view(newPRowPtr[i],newPRowPtr[i+1]-newPRowPtr[i]),
           newPVals.view(newPRowPtr[i],newPRowPtr[i+1]-newPRowPtr[i]));
     }

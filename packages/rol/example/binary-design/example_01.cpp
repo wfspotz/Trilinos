@@ -106,13 +106,13 @@ public:
 };
 
 template<class Real>
-class BinaryDesignEqualityConstraint : public ROL::EqualityConstraint<Real> {
+class BinaryDesignConstraint : public ROL::Constraint<Real> {
 private:
   const int nvars_;
   const Real vol_;
 
 public:
-  BinaryDesignEqualityConstraint(const int &nvars, const Real &vol)
+  BinaryDesignConstraint(const int &nvars, const Real &vol)
     : nvars_(nvars), vol_(vol) {}
 
   void value(ROL::Vector<Real> &c, const ROL::Vector<Real> &x, Real &tol) {
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
     Teuchos::RCP<ROL::Vector<RealT> > ajv = Teuchos::rcp( new ROL::StdVector<RealT>(ajv_rcp) );
     Teuchos::RCP<ROL::Vector<RealT> > c = Teuchos::rcp( new ROL::StdVector<RealT>(c_rcp) );
     Teuchos::RCP<ROL::Objective<RealT> > obj = Teuchos::rcp(new BinaryDesignObjective<RealT>(dim, alpha));
-    Teuchos::RCP<ROL::EqualityConstraint<RealT> > con = Teuchos::rcp(new BinaryDesignEqualityConstraint<RealT>(dim, vol));
+    Teuchos::RCP<ROL::Constraint<RealT> > con = Teuchos::rcp(new BinaryDesignConstraint<RealT>(dim, vol));
 
    // Define algorithm
     Teuchos::RCP<Teuchos::ParameterList> parlist
@@ -247,8 +247,8 @@ int main(int argc, char *argv[]) {
     *outStream << "\n";
     // Test constraint.
     con->checkApplyJacobian(*x, *v, *jv, true, *outStream);
-    con->checkAdjointConsistencyJacobian(*ajv, *v, *x, true, *outStream);
-    con->checkApplyAdjointHessian(*x, *ajv, *v, *v, true, *outStream);
+    con->checkAdjointConsistencyJacobian(*jv, *v, *x, true, *outStream);
+    con->checkApplyAdjointHessian(*x, *jv, *v, *v, true, *outStream);
 
     // Run algorithm
     for (int i=0; i<dim; ++i) {

@@ -11,7 +11,7 @@ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/../../../kokkos/src)
 TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../../tpetra/src)
 TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/../../../tpetra/src)
 
-IF(Trilinos_ENABLE_ML)
+IF(${PACKAGE_NAME}_ENABLE_ML)
   TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../../ml/src/Include)
   TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../../ml/src/Coarsen)
   TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../../../ml/src/Comm)
@@ -78,18 +78,15 @@ TRIBITS_ADD_EXECUTABLE_AND_TEST(
     COMM serial mpi
   )
 
-ASSERT_DEFINED (${PACKAGE_NAME}_ENABLE_Experimental)
-IF (${PACKAGE_NAME}_ENABLE_Experimental)
-  TRIBITS_ADD_EXECUTABLE_AND_TEST(
-    RBILUK
-    SOURCES 
-      Ifpack2_UnitTestRBILUK.cpp
-      ${TEUCHOS_STD_UNIT_TEST_MAIN}
-    ARGS ""
-    COMM serial mpi
-    STANDARD_PASS_OUTPUT
-    )
-ENDIF ()
+TRIBITS_ADD_EXECUTABLE_AND_TEST(
+		RBILUK
+		SOURCES 
+		Ifpack2_UnitTestRBILUK.cpp
+		${TEUCHOS_STD_UNIT_TEST_MAIN}
+		ARGS ""
+		COMM serial mpi
+		STANDARD_PASS_OUTPUT
+		)
 
 #TRIBITS_ADD_EXECUTABLE(
 #    Distributed_SGS
@@ -132,11 +129,23 @@ TRIBITS_ADD_EXECUTABLE_AND_TEST(
   STANDARD_PASS_OUTPUT
   )
 
-ASSERT_DEFINED (Trilinos_ENABLE_ML)
+IF(${PACKAGE_NAME}_ENABLE_Experimental_KokkosKernels_Features)
+  TRIBITS_ADD_EXECUTABLE_AND_TEST(
+    BlockTriDiContainerUnitAndPerfTests
+    SOURCES 
+    Ifpack2_UnitTestBlockTriDiContainer.cpp
+    ARGS ""
+    COMM serial mpi
+    NUM_MPI_PROCS 1-4
+    STANDARD_PASS_OUTPUT
+    )
+ENDIF()
+
+ASSERT_DEFINED (${PACKAGE_NAME}_ENABLE_ML)
 # mfh 01 Jan 2017: 
 # Fix for https://github.com/trilinos/Trilinos/issues/935
-ASSERT_DEFINED (Trilinos_ENABLE_Epetra)
-IF (Trilinos_ENABLE_ML AND Trilinos_ENABLE_Epetra)
+ASSERT_DEFINED (${PROJECT_NAME}_ENABLE_Epetra)
+IF (${PACKAGE_NAME}_ENABLE_ML AND ${PROJECT_NAME}_ENABLE_Epetra)
   TRIBITS_ADD_EXECUTABLE_AND_TEST(
     BlockRelaxationPerformance
     SOURCES
@@ -230,7 +239,7 @@ IF (${PACKAGE_NAME}_ENABLE_Experimental_KokkosKernels_Features)
   )
 
   TRIBITS_ADD_TEST(
-    SGSMT Ifpack2_UnitTest_SGSMT_CopyFile
+    SGSMT
     NAME SGSMT_compare_with_Jacobi
     ARGS ""
     COMM serial mpi

@@ -30,21 +30,25 @@ recommended) from:
 Installing CMake from source [developers and experienced users]
 ---------------------------------------------------------------
 
-If you have access to the <Project> git repositories, then install CMake with::
+If you have access to the <Project> git repositories (which which includes a
+snapshot of TriBITS), then install CMake with::
 
-  $ $TRIBITS_BASE_DIR/python/install-cmake.py \
+  $ cd <some-scratch-space>/
+  $ export TRIBITS_BASE_DIR=<project-base-dir>/cmake/tribits
+  $ $TRIBITS_BASE_DIR/devtools_install/install-cmake.py \
      --install-dir=<INSTALL_BASE_DIR> \
      --do-all
 
 This will result in cmake and related CMake tools being installed in
-<INSTALL_BASE_DIR>/bin.
+``<INSTALL_BASE_DIR>/bin/`` (see the instructions printed at the end on how to
+update your ``PATH`` env var).
 
-Getting help for installing CMake with this script::
+To get help for installing CMake with this script use::
 
-  $ $TRIBITS_BASE_DIR/python/install-cmake.py --help
+  $ $TRIBITS_BASE_DIR/devtools_install/install-cmake.py --help
 
 NOTE: you will want to read the help message about how to use sudo to
-install in a privileged location (like the default /usr/local/bin).
+install in a privileged location (like the default ``/usr/local/bin``).
 
 
 Getting CMake Help
@@ -1676,7 +1680,7 @@ most projects is 1500 seconds (see the default value set in the CMake cache).
 This value gets scaled by `<Project>_SCALE_TEST_TIMEOUT`_ and then set as the
 field ``TimeOut`` in the CMake-generated file ``DartConfiguration.tcl``.  The
 value ``TimeOut`` from this file is what is directly read by the ``ctest``
-exectuable.  Timeouts for tests are important.  For example, when an MPI
+executable.  Timeouts for tests are important.  For example, when an MPI
 program has a defect, it can easily hang (forever) until it is manually
 killed.  If killed by a timeout, CTest will kill the test process and all of
 its child processes correctly.
@@ -2422,7 +2426,7 @@ absolute paths, use the data type ``PATH`` as shown above.
 Setting install RPATH
 ---------------------
 
-Setting RPATH for installed shared libraries and exectuables
+Setting RPATH for installed shared libraries and executables
 (i.e. ``BUILD_SHARED_LIBS=ON``) can be a little tricky.  Some discussion of
 how raw CMake handles RPATH and installations can be found at:
 
@@ -2444,7 +2448,7 @@ same as the raw CMake default behavior):
   ``CMAKE_INSTALL_RPATH_USE_LINK_PATH`` which is set to ``TRUE`` by default
   for most TriBITS projects but is empty "" for raw CMake.)
 
-The above default behavior allows the installed exectuables and libraries to
+The above default behavior allows the installed executables and libraries to
 be run without needing to set ``LD_LIBRARY_PATH`` or any other system
 environment variables.  However, this setting does not allow the installed
 libraries and executables to be easily moved or relocated.  There are several
@@ -2501,7 +2505,7 @@ These scenarios in detail are:
      -D<Project>_SET_INSTALL_RPATH=TRUE \
      -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE \
 
-   As described above, this allows libraries and exectuables to be used right
+   As described above, this allows libraries and executables to be used right
    away once installed without needing to set any environment variables.
 
    Note that this also allows the installed libraries and executables to be
@@ -2560,7 +2564,7 @@ These scenarios in detail are:
    may help to avoid confusion.)
 
    Once the install directories are moved to the final location, the
-   exectuables can be run without any need to set environment variables.
+   executables can be run without any need to set environment variables.
 
    Note that TriBITS also accepts the directory separator "``:``" for::
 

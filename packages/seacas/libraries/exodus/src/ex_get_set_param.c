@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2005 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
+ * Copyright (c) 2005 National Technology & Engineering Solutions
+ * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+ * NTESS, the U.S. Government retains certain rights in this software.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -15,7 +15,7 @@
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
  *
- *     * Neither the name of Sandia Corporation nor the names of its
+ *     * Neither the name of NTESS nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -171,13 +171,12 @@ int ex_get_set_param(int exoid, ex_entity_type set_type, ex_entity_id set_id,
       if (status == NC_ENOTVAR) {
         EX_FUNC_LEAVE(EX_NOERR);
       }
-      else {
-        snprintf(errmsg, MAX_ERR_LENGTH,
-                 "ERROR: failed to locate the dist factors for %s %" PRId64 " in file id %d",
-                 ex_name_of_object(set_type), set_id, exoid);
-        ex_err("ex_get_set_param", errmsg, status);
-        EX_FUNC_LEAVE(EX_FATAL);
-      }
+
+      snprintf(errmsg, MAX_ERR_LENGTH,
+               "ERROR: failed to locate the dist factors for %s %" PRId64 " in file id %d",
+               ex_name_of_object(set_type), set_id, exoid);
+      ex_err("ex_get_set_param", errmsg, status);
+      EX_FUNC_LEAVE(EX_FATAL);
     }
     if (ex_int64_status(exoid) & EX_BULK_INT64_API) {
       if (num_dist_fact_in_set) {
@@ -195,13 +194,12 @@ int ex_get_set_param(int exoid, ex_entity_type set_type, ex_entity_id set_id,
       if (status == NC_EBADDIM) {
         EX_FUNC_LEAVE(EX_NOERR);
       }
-      else {
-        snprintf(errmsg, MAX_ERR_LENGTH,
-                 "ERROR: failed to locate number of dist factors in %s %" PRId64 " in file id %d",
-                 ex_name_of_object(set_type), set_id, exoid);
-        ex_err("ex_get_set_param", errmsg, status);
-        EX_FUNC_LEAVE(EX_FATAL);
-      }
+
+      snprintf(errmsg, MAX_ERR_LENGTH,
+               "ERROR: failed to locate number of dist factors in %s %" PRId64 " in file id %d",
+               ex_name_of_object(set_type), set_id, exoid);
+      ex_err("ex_get_set_param", errmsg, status);
+      EX_FUNC_LEAVE(EX_FATAL);
     }
 
     if ((status = nc_inq_dimlen(exoid, dimid, &lnum_dist_fact_in_set)) != NC_NOERR) {

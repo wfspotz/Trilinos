@@ -61,10 +61,10 @@
 //#include <fenv.h>
 
 #include "ROL_Algorithm.hpp"
-#include "ROL_BoundConstraint.hpp"
+#include "ROL_Bounds.hpp"
 #include "ROL_Reduced_Objective_SimOpt.hpp"
 #include "ROL_MonteCarloGenerator.hpp"
-#include "ROL_StochasticProblem.hpp"
+#include "ROL_OptimizationProblem.hpp"
 #include "ROL_TpetraTeuchosBatchManager.hpp"
 
 #include "../TOOLS/meshmanager.hpp"
@@ -78,7 +78,7 @@
 typedef double RealT;
 
 template<class Real>
-void setUpAndSolve(ROL::StochasticProblem<Real> &opt,
+void setUpAndSolve(ROL::OptimizationProblem<Real> &opt,
                    Teuchos::ParameterList &parlist,
                    std::ostream &outStream) {
   ROL::Algorithm<RealT> algo("Trust Region",parlist,false);
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
     // Initialize PDE describing advection-diffusion equation
     Teuchos::RCP<PDE_NavierStokes<RealT> > pde
       = Teuchos::rcp(new PDE_NavierStokes<RealT>(*parlist));
-    Teuchos::RCP<ROL::EqualityConstraint_SimOpt<RealT> > con
+    Teuchos::RCP<ROL::Constraint_SimOpt<RealT> > con
       = Teuchos::rcp(new PDE_Constraint<RealT>(pde,meshMgr,serial_comm,*parlist,*outStream));
     // Cast the constraint and get the assembler.
     Teuchos::RCP<PDE_Constraint<RealT> > pdecon
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
     Teuchos::RCP<ROL::Vector<RealT> > zlop = Teuchos::rcp(new PDE_OptVector<RealT>(zlopde));
     Teuchos::RCP<ROL::Vector<RealT> > zhip = Teuchos::rcp(new PDE_OptVector<RealT>(zhipde));
     Teuchos::RCP<ROL::BoundConstraint<RealT> > bnd
-      = Teuchos::rcp(new ROL::BoundConstraint<RealT>(zlop,zhip));
+      = Teuchos::rcp(new ROL::Bounds<RealT>(zlop,zhip));
     bool useBounds = parlist->sublist("Problem").get("Use bounds", false);
     if (!useBounds) {
       bnd->deactivate();
@@ -304,12 +304,12 @@ int main(int argc, char *argv[]) {
     /*************************************************************************/
     /***************** BUILD STOCHASTIC PROBLEM ******************************/
     /*************************************************************************/
-    Teuchos::RCP<ROL::StochasticProblem<RealT> > opt;
+    Teuchos::RCP<ROL::OptimizationProblem<RealT> > opt;
     std::vector<RealT> ctrl;
     std::vector<RealT> var;
 
     Teuchos::Array<RealT> alphaArray
-      = Teuchos::getArrayFromStringParameter<RealT>(parlist->sublist("Problem"),"BPOE Thresholds");
+      = Teuchos::getArrayFromStringParameter<RealT>(parlist->sublist("Problem"),"bPOE Thresholds");
     std::vector<RealT> alpha = alphaArray.toVector();
     std::sort(alpha.begin(),alpha.end());
     int N = alpha.size();
@@ -318,27 +318,28 @@ int main(int argc, char *argv[]) {
     /***************** SOLVE MEAN PLUS CVAR **********************************/
     /*************************************************************************/
     RealT tol(1e-8);
-    parlist->sublist("SOL").set("Stochastic Optimization Type","BPOE");
-    parlist->sublist("SOL").sublist("BPOE").set("Moment Order",2.0);
+    parlist->sublist("SOL").set("Stochastic Component Type","Risk Averse");
+    parlist->sublist("SOL").sublist("Risk Measure").set("Name","bPOE");
+    parlist->sublist("SOL").sublist("Risk Measure").sublist("bPOE").set("Moment Order",2.0);
     for (int i = 0; i < N; ++i) {
       // Solve.
-      parlist->sublist("SOL").sublist("BPOE").set("Threshold",alpha[i]);
-      opt = Teuchos::rcp(new ROL::StochasticProblem<RealT>(*parlist,objRed,sampler,zp));
+      parlist->sublist("SOL").sublist("Risk Measure").sublist("bPOE").set("Threshold",alpha[i]);
+      opt = Teuchos::rcp(new ROL::OptimizationProblem<RealT>(objRed,zp,bnd));
+      RealT stat(1);
       if ( i > 0 ) {
-        opt->setSolutionStatistic(var[i]);
+        stat = var[i];
       }
-      else {
-        opt->setSolutionStatistic(static_cast<RealT>(1));
-      }
+      parlist->sublist("SOL").set("Initial Statistic",stat);
+      opt->setStochasticObjective(*parlist,sampler);
       setUpAndSolve<RealT>(*opt,*parlist,*outStream);
       // Output.
       ctrl.push_back(objCtrl->value(*up,*zp,tol));
       var.push_back(opt->getSolutionStatistic());
       std::stringstream nameCtrl;
-      nameCtrl << "control_BPOE_" << i+1 << ".txt";
+      nameCtrl << "control_bPOE_" << i+1 << ".txt";
       pdecon->outputTpetraVector(z_rcp,nameCtrl.str().c_str());
       std::stringstream nameObj;
-      nameObj << "obj_samples_BPOE_" << i+1 << ".txt";
+      nameObj << "obj_samples_bPOE_" << i+1 << ".txt";
       print<RealT>(*objRed,*zp,*sampler_dist,nsamp_dist,comm,nameObj.str());
     }
 

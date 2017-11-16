@@ -21,7 +21,7 @@ SET(HAVE_STOKHOS_DAKOTA ${${PACKAGE_NAME}_ENABLE_TriKota})
 # OpenMP support -- Add our own option to turn it off
 # without turning it off globally
 SET(Stokhos_ENABLE_OpenMP_Default OFF)
-IF(Trilinos_ENABLE_OpenMP)
+IF(${PROJECT_NAME}_ENABLE_OpenMP)
   SET(Stokhos_ENABLE_OpenMP_Default ON)
 ENDIF()
 TRIBITS_ADD_OPTION_AND_DEFINE(
@@ -614,9 +614,12 @@ IF (Stokhos_ENABLE_Sacado)
         Experimental::BlockMultiVector
         Experimental::BlockCrsMatrix
         Details::getDiagCopyWithoutOffsets
+        Details::packCrsMatrix
+        Details::unpackCrsMatrixAndCombine
         )
       SET(TPETRAEXT_ETI_CLASSES
         MatrixMatrix
+        TripleMatrixMultiply
         )
     IF(Stokhos_ENABLE_Ensemble_Scalar_Type)
       INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/sacado/kokkos/vector/tpetra)
@@ -949,7 +952,7 @@ IF (Stokhos_ENABLE_Sacado)
       IF(Stokhos_ENABLE_Ensemble_Scalar_Type)
         INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/sacado/kokkos/vector/muelu)
         APPEND_GLOB(MUELU_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/sacado/kokkos/vector/muelu/*.hpp)
-        IF(MueLu_ENABLE_EXPLICIT_INSTANTIATION)
+        IF (MueLu_ENABLE_EXPLICIT_INSTANTIATION)
           IF (Tpetra_INST_SERIAL)
             APPEND_GLOB(MUELU_CPP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/sacado/kokkos/vector/muelu/*_Serial.cpp)
           ENDIF()

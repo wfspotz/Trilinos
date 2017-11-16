@@ -1,3 +1,35 @@
+// Copyright(C) 1999-2010 National Technology & Engineering Solutions
+// of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+// NTESS, the U.S. Government retains certain rights in this software.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//
+//     * Redistributions in binary form must reproduce the above
+//       copyright notice, this list of conditions and the following
+//       disclaimer in the documentation and/or other materials provided
+//       with the distribution.
+//
+//     * Neither the name of NTESS nor the names of its
+//       contributors may be used to endorse or promote products derived
+//       from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include <Ioss_Bar2.h>
 #include <Ioss_Bar3.h>
 #include <Ioss_Hex20.h>
@@ -218,13 +250,11 @@ bool Iocgns::Utils::is_cell_field(const Ioss::Field &field)
   else if (index & CG_CELL_CENTER_FIELD_ID) {
     return true;
   }
-  if (field.get_name() == "mesh_model_coordinates" ||
-      field.get_name() == "mesh_model_coordinates_x" ||
-      field.get_name() == "mesh_model_coordinates_y" ||
-      field.get_name() == "mesh_model_coordinates_z" || field.get_name() == "cell_node_ids") {
-    return false;
-  }
-  return true; // Default to cell field...
+  return !(field.get_name() == "mesh_model_coordinates" ||
+           field.get_name() == "mesh_model_coordinates_x" ||
+           field.get_name() == "mesh_model_coordinates_y" ||
+           field.get_name() == "mesh_model_coordinates_z" ||
+           field.get_name() == "cell_node_ids"); // Default to cell field...
 }
 
 void Iocgns::Utils::common_write_meta_data(int file_ptr, const Ioss::Region &region,
@@ -265,9 +295,9 @@ void Iocgns::Utils::common_write_meta_data(int file_ptr, const Ioss::Region &reg
 
     CGERR(cg_fambc_write(file_ptr, base, fam, "FamBC", bocotype, &bc_index));
     CGERR(cg_goto(file_ptr, base, "Family_t", fam, NULL));
-    CGERR(cg_descriptor_write("FamBC_TypeId", Ioss::Utils::to_string(bocotype).c_str()));
+    CGERR(cg_descriptor_write("FamBC_TypeId", std::to_string(bocotype).c_str()));
     CGERR(cg_descriptor_write("FamBC_TypeName", BCTypeName[bocotype]));
-    CGERR(cg_descriptor_write("FamBC_UserId", Ioss::Utils::to_string(id).c_str()));
+    CGERR(cg_descriptor_write("FamBC_UserId", std::to_string(id).c_str()));
     CGERR(cg_descriptor_write("FamBC_UserName", ss->name().c_str()));
   }
 
@@ -430,7 +460,7 @@ void Iocgns::Utils::write_flow_solution_metadata(int file_ptr, Ioss::Region *reg
 {
   std::string c_name = "CellCenterSolutionAtStep";
   std::string v_name = "VertexSolutionAtStep";
-  std::string step   = Ioss::Utils::to_string(state);
+  std::string step   = std::to_string(state);
   c_name += step;
   v_name += step;
 
@@ -474,7 +504,7 @@ void Iocgns::Utils::write_flow_solution_metadata(int file_ptr, Ioss::Region *reg
 int Iocgns::Utils::find_solution_index(int cgnsFilePtr, int base, int zone, int step,
                                        CG_GridLocation_t location)
 {
-  auto str_step = Ioss::Utils::to_string(step);
+  auto str_step = std::to_string(step);
   int  nsols    = 0;
   CGCHECKNP(cg_nsols(cgnsFilePtr, base, zone, &nsols));
   bool location_matches = false;
@@ -501,10 +531,9 @@ int Iocgns::Utils::find_solution_index(int cgnsFilePtr, int base, int zone, int 
             cg_free(db_step);
             return i + 1;
           }
-          else {
-            cg_free(db_step);
-            break; // Found "step" descriptor, but wasn't correct step...
-          }
+
+          cg_free(db_step);
+          break; // Found "step" descriptor, but wasn't correct step...
         }
       }
       if (!found_step_descriptor) {
@@ -539,7 +568,7 @@ void Iocgns::Utils::add_sidesets(int cgnsFilePtr, Ioss::DatabaseIO *db)
     cgsize_t    num_geo = 0;
     CGCHECKNP(cg_family_read(cgnsFilePtr, base, family, name, &num_bc, &num_geo));
 
-#if defined(IOSS_DEBUG_OUTPUT)
+#if IOSS_DEBUG_OUTPUT
     std::cerr << "Family " << family << " named " << name << " has " << num_bc << " BC, and "
               << num_geo << " geometry references\n";
 #endif
@@ -616,7 +645,7 @@ size_t Iocgns::Utils::resolve_nodes(Ioss::Region &region, int my_processor, bool
                       block->get_block_local_node_offset(index[0], index[1], index[2]);
                   block->m_globalIdMap.emplace_back(block_local_offset, owner_global_offset + 1);
                 }
-		else if (!is_parallel || (zgc.m_ownerProcessor != my_processor)) {
+                else if (!is_parallel || (zgc.m_ownerProcessor != my_processor)) {
                   size_t  local_offset = block->get_local_node_offset(index[0], index[1], index[2]);
                   ssize_t owner_local_offset =
                       owner_block->get_local_node_offset(owner[0], owner[1], owner[2]);
@@ -624,7 +653,7 @@ size_t Iocgns::Utils::resolve_nodes(Ioss::Region &region, int my_processor, bool
                   if (cell_node_map[local_offset] == ss_max) {
                     cell_node_map[local_offset] = owner_local_offset;
                   }
-#if defined(IOSS_DEBUG_OUTPUT)
+#if IOSS_DEBUG_OUTPUT
                   else {
                     if (cell_node_map[local_offset] != owner_local_offset) {
                       std::cerr << "DUPLICATE?: " << local_offset << " " << owner_local_offset
@@ -742,7 +771,7 @@ void Iocgns::Utils::resolve_shared_nodes(Ioss::Region &region, int my_processor)
         }
       }
     }
-#if defined(IOSS_DEBUG_OUTPUT)
+#if IOSS_DEBUG_OUTPUT
     std::cerr << "P" << my_processor << ", Block " << owner_block->name()
               << " Shared Nodes: " << owner_block->m_sharedNode.size() << "\n";
 #endif
@@ -790,10 +819,10 @@ void Iocgns::Utils::add_structured_boundary_conditions(int                    cg
       auto *db = block->get_database();
       sset     = new Ioss::SideSet(db, boconame);
       if (sset == nullptr) {
-	std::ostringstream errmsg;
-	errmsg << "ERROR: CGNS: Could not create sideset named '" << boconame
-	       << "' on block '" << block->name() << "'.\n";
-	IOSS_ERROR(errmsg);
+        std::ostringstream errmsg;
+        errmsg << "ERROR: CGNS: Could not create sideset named '" << boconame << "' on block '"
+               << block->name() << "'.\n";
+        IOSS_ERROR(errmsg);
       }
       sset->property_add(Ioss::Property("id", ibc + 1)); // Not sure this is unique id...
       db->get_region()->add(sset);
@@ -870,7 +899,7 @@ void Iocgns::Utils::finalize_database(int cgnsFilePtr, const std::vector<double>
   std::vector<char> names(32 * timesteps.size(), ' ');
   for (size_t state = 0; state < timesteps.size(); state++) {
     // This name is the "postfix" or common portion of all FlowSolution names...
-    std::string name = "SolutionAtStep" + Ioss::Utils::to_string(state + 1);
+    std::string name = "SolutionAtStep" + std::to_string(state + 1);
     std::strncpy(&names[state * 32], name.c_str(), 32);
     for (size_t i = name.size(); i < 32; i++) {
       names[state * 32 + i] = ' ';
@@ -1019,12 +1048,13 @@ int Iocgns::Utils::get_step_times(int cgnsFilePtr, std::vector<double> &timestep
   if (ierr == CG_NODE_NOT_FOUND) {
     return num_timesteps;
   }
-  else if (ierr == CG_ERROR) {
+  if (ierr == CG_ERROR) {
     Utils::cgns_error(cgnsFilePtr, __FILE__, __func__, __LINE__, myProcessor);
   }
 
-  if (num_timesteps <= 0)
+  if (num_timesteps <= 0) {
     return num_timesteps;
+  }
 
   // Read the timestep time values.
   CGCHECK(cg_goto(cgnsFilePtr, base, "BaseIterativeData_t", 1, "end"));

@@ -99,10 +99,10 @@ INCLUDE(Split)
 # See `How to use FIND_PACKAGE() for a TriBITS TPL`_ for details in how to use
 # this function to create a ``FindTPL<tplName>.cmake`` module file.
 #
-FUNCTION(TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE  TPL_NAME  ALLOW_PACAKGE_PREFIND_OUT)
+FUNCTION(TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE  TPL_NAME  ALLOW_PACKAGE_PREFIND_OUT)
 
   IF (TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE_DEBUG)
-    MESSAGE("TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE: '${TPL_NAME}'  '${ALLOW_PACAKGE_PREFIND_OUT}'")
+    MESSAGE("TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE: '${TPL_NAME}'  '${ALLOW_PACKAGE_PREFIND_OUT}'")
     PRINT_VAR(${TPL_NAME}_INCLUDE_DIRS)
     PRINT_VAR(${TPL_NAME}_LIBRARY_NAMES)
     PRINT_VAR(${TPL_NAME}_LIBRARY_DIRS)
@@ -114,7 +114,7 @@ FUNCTION(TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE  TPL_NAME  ALLOW_PACAKGE_PREFIND_OUT
     "Determines if the variables ${TPL_NAME}_[INCLUDE_DIRS,LIBRARY_NAMES,LIBRARY_DIRS] should be ignored and the pre-find FIND_PACKAGE(${TPL_NAME} should be performed anyway.  But this will *not* do the pre-find if any of the TPL_${TPL_NAME}_[INCLUDE_DIRS,LIBRARY_NAMES,LIBRARY_DIRS] vars are set." )
 
   # Start out with TRUE and set to FALSE in logic below
-  SET(ALLOW_PACAKGE_PREFIND TRUE)
+  SET(ALLOW_PACKAGE_PREFIND TRUE)
 
   IF (
     (NOT "${TPL_${TPL_NAME}_INCLUDE_DIRS}" STREQUAL "")
@@ -123,7 +123,7 @@ FUNCTION(TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE  TPL_NAME  ALLOW_PACAKGE_PREFIND_OUT
     )
     # The user has selected one or more of the final vars so skip calling
     # FIND_PACKAGE(${TPL_NAME} ...) ...
-    SET(ALLOW_PACAKGE_PREFIND FALSE)
+    SET(ALLOW_PACKAGE_PREFIND FALSE)
   ELSEIF (
     (NOT "${${TPL_NAME}_INCLUDE_DIRS}" STREQUAL "")
     OR (NOT "${${TPL_NAME}_LIBRARY_NAMES}" STREQUAL "")
@@ -137,11 +137,11 @@ FUNCTION(TRIBITS_TPL_ALLOW_PRE_FIND_PACKAGE  TPL_NAME  ALLOW_PACAKGE_PREFIND_OUT
     ELSE()
       # We will not ignore the override of these variables and will instead go
       # ahead and skip the pre-find.
-      SET(ALLOW_PACAKGE_PREFIND FALSE)
+      SET(ALLOW_PACKAGE_PREFIND FALSE)
     ENDIF()
   ENDIF()
 
-  SET(${ALLOW_PACAKGE_PREFIND_OUT} ${ALLOW_PACAKGE_PREFIND} PARENT_SCOPE)
+  SET(${ALLOW_PACKAGE_PREFIND_OUT} ${ALLOW_PACKAGE_PREFIND} PARENT_SCOPE)
 
 ENDFUNCTION()
 
@@ -151,7 +151,7 @@ ENDFUNCTION()
 #
 # Function that sets up cache variables for users to specify where to find a
 # `TriBITS TPL`_'s headers and libraries.  This function is typically called
-# inside of a ``FindTPL<tplName>.cmake`` moulde file (see
+# inside of a ``FindTPL<tplName>.cmake`` module file (see
 # `${TPL_NAME}_FINDMOD`_).
 #
 # Usage::
@@ -271,6 +271,8 @@ FUNCTION(TRIBITS_TPL_FIND_INCLUDE_DIRS_AND_LIBRARIES TPL_NAME)
      "REQUIRED_HEADERS;REQUIRED_LIBS_NAMES"
      ${ARGN}
      )
+
+  TRIBITS_CHECK_FOR_UNPARSED_ARGUMENTS()
 
   IF (${PROJECT_NAME}_VERBOSE_CONFIGURE)
     SET(TRIBITS_TPL_FIND_INCLUDE_DIRS_AND_LIBRARIES_VERBOSE TRUE)
@@ -692,7 +694,7 @@ ENDFUNCTION()
 #   TRIBITS_TPL_TENTATIVELY_ENABLE(<tplName>)
 # 
 # This function can be called from any CMakeLists.txt file to put a TPL in
-# tentative enable mode.  But typically, it is called from an SE Pakcage's
+# tentative enable mode.  But typically, it is called from an SE Package's
 # `<packageDir>/cmake/Dependencies.cmake`_ file (see `How to tentatively
 # enable a TPL`_).
 #
@@ -704,7 +706,7 @@ ENDFUNCTION()
 # not already been set, and sets ``TPL_TENTATIVE_ENABLE_<tplName>=ON`` in the
 # cache.
 #
-# NOTE: This function will only tentatively enable a TPL it its enable has not
+# NOTE: This function will only tentatively enable a TPL if its enable has not
 # be explicitly set on input, i.e. if ``-D TPL_ENABLE_<tplName>=""``.  If the
 # TPL has been explicitly enabled (i.e. ``-D TPL_ENABLE_<tplName>=ON``) or
 # disabled (i.e. ``-D TPL_ENABLE_<tplName>=OFF``), then this function has no

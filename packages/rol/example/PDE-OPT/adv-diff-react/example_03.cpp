@@ -58,10 +58,10 @@
 //#include <fenv.h>
 
 #include "ROL_Algorithm.hpp"
-#include "ROL_BoundConstraint.hpp"
+#include "ROL_Bounds.hpp"
 #include "ROL_Reduced_Objective_SimOpt.hpp"
 #include "ROL_MonteCarloGenerator.hpp"
-#include "ROL_StochasticProblem.hpp"
+#include "ROL_OptimizationProblem.hpp"
 #include "ROL_TpetraTeuchosBatchManager.hpp"
 
 #include "../TOOLS/meshmanager.hpp"
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
     // Initialize PDE describing advection-diffusion equation
     Teuchos::RCP<PDE_stoch_adv_diff<RealT> > pde
       = Teuchos::rcp(new PDE_stoch_adv_diff<RealT>(*parlist));
-    Teuchos::RCP<ROL::EqualityConstraint_SimOpt<RealT> > con
+    Teuchos::RCP<ROL::Constraint_SimOpt<RealT> > con
       = Teuchos::rcp(new PDE_Constraint<RealT>(pde,meshMgr,serial_comm,*parlist,*outStream));
     Teuchos::RCP<PDE_Constraint<RealT> > pdeCon
       = Teuchos::rcp_dynamic_cast<PDE_Constraint<RealT> >(con);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
     Teuchos::RCP<ROL::Vector<RealT> > zhip
       = Teuchos::rcp(new PDE_OptVector<RealT>(Teuchos::rcp(new ROL::StdVector<RealT>(zhi_rcp))));
     Teuchos::RCP<ROL::BoundConstraint<RealT> > bnd
-      = Teuchos::rcp(new ROL::BoundConstraint<RealT>(zlop,zhip));
+      = Teuchos::rcp(new ROL::Bounds<RealT>(zlop,zhip));
 
     /*************************************************************************/
     /***************** BUILD SAMPLER *****************************************/
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
     /*************************************************************************/
     /***************** SOLVE OPTIMIZATION PROBLEM ****************************/
     /*************************************************************************/
-    Teuchos::RCP<ROL::StochasticProblem<RealT> > opt;
+    Teuchos::RCP<ROL::OptimizationProblem<RealT> > opt;
     Teuchos::RCP<ROL::Algorithm<RealT> > algo;
     zp->zero();
 
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
 
     std::string rm = "Risk Measure", sr = "Spectral Risk";
     std::string dist = "Distribution", pf = "Plus Function";
-    parlist->sublist("SOL").set("Stochastic Optimization Type","Risk Averse");
+    parlist->sublist("SOL").set("Stochastic Component Type","Risk Averse");
     parlist->sublist("SOL").sublist(rm).set("Name",sr);
     parlist->sublist("SOL").sublist(rm).sublist(sr).set("Print Quadrature to Screen",!myRank);
     parlist->sublist("SOL").sublist(rm).sublist(sr).sublist(dist).set("Name","Beta");
@@ -241,11 +241,11 @@ int main(int argc, char *argv[]) {
       for (int j = 0; j < nSmooth; ++j) {
         parlist->sublist("SOL").sublist(rm).sublist(sr).sublist(pf).set("Smoothing Parameter",eps);
         // Build stochastic optimization problem
-        opt = Teuchos::rcp(new ROL::StochasticProblem<RealT>(*parlist,objReduced,sampler,zp,bnd));
-        opt->setSolutionStatistic(stat);
+        opt = Teuchos::rcp(new ROL::OptimizationProblem<RealT>(objReduced,zp,bnd));
+        parlist->sublist("SOL").set("Initial Statisitic", stat);
+        opt->setStochasticObjective(*parlist,sampler);
         if (checkDeriv) {
-          opt->checkObjectiveGradient(*dzp,true,*outStream);
-          opt->checkObjectiveHessVec(*dzp,true,*outStream);
+          opt->check(*outStream);
         }
         // Solve optimization problem
         algo = Teuchos::rcp(new ROL::Algorithm<RealT>("Trust Region",*parlist,false));

@@ -128,26 +128,6 @@ FUNCTION(TRIBITS_UPDATE_GIT_EXTRAREPO  GIT_EXE  EXTRAREPO_SRC_DIR)
 ENDFUNCTION()
 
 
-
-#
-# Wrapper used for unit testing purposes
-#
-
-MACRO(EXTRAREPO_EXECUTE_PROCESS_WRAPPER)
-  IF (NOT CTEST_DEPENDENCY_HANDLING_UNIT_TESTING)
-    EXECUTE_PROCESS(${ARGN}
-      RESULT_VARIABLE  EXTRAREPO_EXECUTE_PROCESS_WRAPPER_RTN_VAL)
-    IF (NOT EXTRAREPO_EXECUTE_PROCESS_WRAPPER_RTN_VAL STREQUAL "0")
-      MESSAGE(SEND_ERROR
-        "Error: EXECUTE_PROCESS(${ARGN}) returned"
-	" '${EXTRAREPO_EXECUTE_PROCESS_WRAPPER_RTN_VAL}'")
-    ENDIF()
-  ELSE()
-    MESSAGE("EXECUTE_PROCESS(${ARGN})")
-  ENDIF()
-ENDMACRO()
-
-
 #
 # Update or clone a single extra repo
 #
@@ -663,6 +643,27 @@ MACRO(SELECT_FINAL_SET_OF_PACKAGES_TO_DIRECTLY_TEST)
 
   ENDFOREACH()
 
+<<<<<<< HEAD
+=======
+ENDMACRO()
+
+
+#
+# Set mapping of labels to subprojects (i.e. TriBITS packages) for CDash.
+#
+# NOTE: Unlike for the inner CMake configure, only subprojects that are
+# explicitly tested will be marked as a CDash subproject.  This limits the
+# rows in CDash.  This does not seem to be a problem for when running ctest
+# locally.  When run locally, ctest will just report aggregated times for
+# subprojects that have 1 or more tests.  Not true for CDash.
+#
+
+MACRO(TRIBITS_CTEST_DRIVER_SET_LABELS_TO_SUBPROJECTS_MAPPING)
+  SET(CTEST_LABELS_FOR_SUBPROJECTS)
+  FOREACH(TRIBITS_PACKAGE ${${PROJECT_NAME}_PACKAGES_TO_DIRECTLY_TEST})
+    LIST(APPEND CTEST_LABELS_FOR_SUBPROJECTS ${TRIBITS_PACKAGE})
+  ENDFOREACH()
+>>>>>>> origin/develop
 ENDMACRO()
 
 
@@ -791,7 +792,9 @@ MACRO(TRIBITS_CTEST_SUBMIT_DRIVER)
   # If using a recent enough ctest with RETRY_COUNT, use it to overcome
   # failed submits:
   SET(retry_args "")
-  SET(retry_args RETRY_COUNT 25 RETRY_DELAY 120)
+  SET(retry_args
+    RETRY_COUNT ${CTEST_SUBMIT_RETRY_COUNT}
+    RETRY_DELAY ${CTEST_SUBMIT_RETRY_DELAY})
   MESSAGE("info: using retry_args='${retry_args}' for _ctest_submit call")
 
   # Call the original CTEST_SUBMIT and pay attention to its RETURN_VALUE:
@@ -888,6 +891,7 @@ MACRO(TRIBITS_FIND_LAST_TEST_FAILED_LOG_FILE)
 ENDMACRO()
 
 
+<<<<<<< HEAD
 # Set mapping of labels to subprojects for CDash
 MACRO(TRIBITS_SET_LABELS_TO_SUBPROJECTS_MAPPING)
   IF (${PROJECT_NAME}_CTEST_USE_NEW_AAO_FEATURES)
@@ -898,6 +902,8 @@ MACRO(TRIBITS_SET_LABELS_TO_SUBPROJECTS_MAPPING)
 ENDMACRO()
 
 
+=======
+>>>>>>> origin/develop
 # Get names of failed packages from failed tests
 FUNCTION(TRIBITS_GET_FAILED_PACKAGES_FROM_FAILED_TESTS
    LAST_TESTS_FAILED_FILE  FAILED_PACKAGES_OUT
@@ -1201,10 +1207,18 @@ MACRO(TRIBITS_CTEST_ALL_AT_ONCE)
     "\n***")
 
   #
+<<<<<<< HEAD
   # A) Set up mapping of labels to subprojects and gather configure arguments
   #
 
   TRIBITS_SET_LABELS_TO_SUBPROJECTS_MAPPING()
+=======
+  # A) Define mapping from labels to subprojects and gather configure arguments
+  #
+
+  TRIBITS_CTEST_DRIVER_SET_LABELS_TO_SUBPROJECTS_MAPPING()
+  PRINT_VAR(CTEST_LABELS_FOR_SUBPROJECTS)
+>>>>>>> origin/develop
 
   MESSAGE("")
   MESSAGE("Configuring ...")
@@ -1284,8 +1298,13 @@ MACRO(TRIBITS_CTEST_ALL_AT_ONCE)
   
     # Submit configure results and the notes to the dashboard
     IF (CTEST_DO_SUBMIT)
+<<<<<<< HEAD
       MESSAGE("\nSubmitting configure and notes ...")
       TRIBITS_CTEST_SUBMIT( PARTS configure notes )
+=======
+      MESSAGE("\nSubmitting update, configure and notes ...")
+      TRIBITS_CTEST_SUBMIT( PARTS update configure notes )
+>>>>>>> origin/develop
     ENDIF()
 
   ENDIF()

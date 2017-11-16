@@ -62,11 +62,11 @@
 
 namespace MueLuTests {
 
-  template <class Scalar = double, class LocalOrdinal = int, class GlobalOrdinal = LocalOrdinal, class Node = KokkosClassic::DefaultNode::DefaultNodeType>
+  template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
   void GetProblemData(RCP<const Teuchos::Comm<int> >& comm, const Xpetra::UnderlyingLib lib, const LocalOrdinal numDimensions,
                       RCP<Xpetra::Matrix<Scalar, LocalOrdinal, GlobalOrdinal, Node> >& Op,
                       RCP<Xpetra::MultiVector<double, LocalOrdinal, GlobalOrdinal, Node> >& Coordinates,
-                      RCP<Xpetra::Map<LocalOrdinal, GlobalOrdinal> >& map,
+                      RCP<Xpetra::Map<LocalOrdinal, GlobalOrdinal, Node> >& map,
                       Array<GlobalOrdinal>& gNodesPerDim, Array<LocalOrdinal>& lNodesPerDim) {
 #include "MueLu_UseShortNames.hpp"
 
@@ -239,13 +239,13 @@ namespace MueLuTests {
 
     LO numDimensions = 3;
 
-    LO maxLevels = 3, maxIter = 10;
+    LO maxLevels = 2, maxIter = 10;
     RCP<Matrix> Op;
     RCP<Xpetra::MultiVector<double,LO,GO,NO> > coordinates;
-    RCP<Map> map;
+    RCP<Xpetra::Map<LO,GO,NO> > map;
     Array<GO> gNodesPerDim(3);
     Array<LO> lNodesPerDim(3);
-    GetProblemData(comm, lib, numDimensions, Op, coordinates, map, gNodesPerDim, lNodesPerDim);
+    GetProblemData<SC,LO,GO,NO>(comm, lib, numDimensions, Op, coordinates, map, gNodesPerDim, lNodesPerDim);
 
     // build nullspace
     RCP<MultiVector> nullSpace = MultiVectorFactory::Build(map,1);
@@ -272,7 +272,6 @@ namespace MueLuTests {
 
     // Set paramters needed by the factories
     Pfact->SetParameter("Coarsen", Teuchos::ParameterEntry(std::string("{2,2,2}")));
-    Pfact->SetParameter("axisPermutation", Teuchos::ParameterEntry(std::string("{0,1,2}")));
     Pfact->SetParameter("order", Teuchos::ParameterEntry(1));
 
     LDfact->SetParameter("orientation", Teuchos::ParameterEntry(std::string("X")));
@@ -302,7 +301,7 @@ namespace MueLuTests {
     Teuchos::ParameterList smootherParamList;
     smootherParamList.set("relaxation: type", "Jacobi");
     smootherParamList.set("relaxation: sweeps", (LocalOrdinal) 1);
-    smootherParamList.set("relaxation: damping factor", (Scalar) 1.0);
+    smootherParamList.set("relaxation: damping factor", (double) 1.0);
     RCP<SmootherPrototype> smooProto = rcp( new TrilinosSmoother("LINESMOOTHING_BANDEDRELAXATION", smootherParamList) );
     RCP<SmootherFactory> SmooFact = rcp( new SmootherFactory(smooProto) );
     Acfact->setVerbLevel(Teuchos::VERB_HIGH);

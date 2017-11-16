@@ -46,7 +46,10 @@
 #ifndef MUELU_UTILITIESBASE_DECL_HPP
 #define MUELU_UTILITIESBASE_DECL_HPP
 
-#include <unistd.h> //necessary for "sleep" function in debugging methods
+#ifndef _WIN32
+#include <unistd.h> //necessary for "sleep" function in debugging methods (PauseForDebugging)
+#endif
+
 #include <string>
 
 #include "MueLu_ConfigDefs.hpp"
@@ -352,7 +355,6 @@ namespace MueLu {
     }
 
 #ifndef _WIN32
-#include <unistd.h>
     static void PauseForDebugger() {
       RCP<const Teuchos::Comm<int> > comm = Teuchos::DefaultComm<int>::getComm();
       int myPID = comm->getRank();
@@ -462,13 +464,12 @@ namespace MueLu {
 
        Used for coordinate vectors.
     */
-    static typename Teuchos::ScalarTraits<Scalar>::magnitudeType Distance2(const Xpetra::MultiVector<Scalar,LocalOrdinal,GlobalOrdinal,Node>& v, LocalOrdinal i0, LocalOrdinal i1) {
-      size_t numVectors = v.getNumVectors();
+    static typename Teuchos::ScalarTraits<Scalar>::magnitudeType Distance2(const Teuchos::Array<Teuchos::ArrayRCP<const Scalar>> &v, LocalOrdinal i0, LocalOrdinal i1) {
+      const size_t numVectors = v.size();
 
       Scalar d = Teuchos::ScalarTraits<Scalar>::zero();
       for (size_t j = 0; j < numVectors; j++) {
-        Teuchos::ArrayRCP<const Scalar> vv = v.getData(j);
-        d += (vv[i0] - vv[i1])*(vv[i0] - vv[i1]);
+        d += (v[j][i0] - v[j][i1])*(v[j][i0] - v[j][i1]);
       }
       return Teuchos::ScalarTraits<Scalar>::magnitude(d);
     }
@@ -535,7 +536,7 @@ namespace MueLu {
         A.getLocalRowView(row, indices, vals);
         size_t nnz = 0; // collect nonzeros in row (excluding the diagonal)
         bool bHasDiag = false;
-        for (size_t col = 0; col < nnz; col++) {
+        for (decltype(indices.size()) col = 0; col < indices.size(); col++) {
           if ( indices[col] != row) {
             if (STS::magnitude(vals[col] / sqrt(STS::magnitude(diagVecData[row]) * STS::magnitude(diagVecData[col]))   ) > tol) {
               nnz++;

@@ -66,7 +66,7 @@ namespace MueLuTests {
 namespace MueLu {
 
 /*!
-  @class GenearlGeometricPFactory
+  @class GeneralGeometricPFactory
   @ingroup MueLuTransferClasses
   @brief Prolongator factory performing geometric coarsening.
 
@@ -119,7 +119,7 @@ namespace MueLu {
 
   public:
 
-    friend class MueLuTests::GeneralGeometricPFactoryTester<Scalar, LocalOrdinal, GlobalOrdinal, Node>;
+    friend class MueLuTests::GeneralGeometricPFactoryTester<Scalar,LocalOrdinal,GlobalOrdinal,Node>;
 
     //! @name Constructors/Destructors.
     //@{
@@ -149,21 +149,89 @@ namespace MueLu {
     //@}
 
   private:
-    void MakeGeneralGeometricP(LO const numDimension, const Array<LO> mapDirL2G, const Array<LO> mapDirG2L, const Array<LO> lFineNodesPerDir,
-                               const Array<LO> lCoarseNodesPerDir, Array<GO> gCoarseNodesPerDir, Array<GO> gFineNodesPerDir,
-                               ArrayRCP<LO> const coarseRate, LO const endRate[3], LO const offsets[6], bool const ghostInterface[6],
-                               const RCP<Xpetra::MultiVector<double,LO,GO,NO> >& fCoords, LO const nnzP, LO const dofsPerNode,
-                               RCP<const Map>& stridedDomainMapP, RCP<Matrix> & Amat, RCP<Matrix>& P,
-                               RCP<Xpetra::MultiVector<double,LO,GO,NO> >& cCoords, Array<GO> ghostsGIDs, int interpolationOrder) const;
+    struct GeometricData {
+      // Geometric algorithm require a copious amount of data to be passed around so this struct
+      // will reduce the amount of input/output parameters of methods in the class. Additionally
+      // the struct can be rewritten to accomodate constraints of Kokkos/CUDA data types
 
-    void ComputeStencil(const LO numDimension, const Array<GO> currentNodeIndices, const Array<GO> coarseNodeIndices,
-                        const LO rate[3], const double coord[9][3], const int interpolationOrder, SC stencil[8]) const;
+      std::string meshLayout = "Global Lexicographic";
+      int numDimensions;
+      LO lNumFineNodes = -1, lNumCoarseNodes = -1, lNumGhostNodes = -1,lNumGhostedNodes  = -1;
+      LO myBlock = -1, numBlocks = -1, lNumFineNodes10 = -1;
+      GO gNumFineNodes = -1, gNumCoarseNodes = -1, gNumFineNodes10 = -1, minGlobalIndex = -1;
+      Array<int> coarseRate, endRate;
+      Array<LO> lFineNodesPerDir, lCoarseNodesPerDir, offsets, ghostedCoarseNodesPerDir;
+      Array<GO> startIndices, gFineNodesPerDir, gCoarseNodesPerDir, startGhostedCoarseNode;
+      std::vector<std::vector<GO> > meshData; // These are sorted later so they are in std::vector
+      bool ghostInterface[6] = {false};
 
-    void ComputeConstantInterpolationStencil(const LO numDimension, const Array<GO> currentNodeIndices, const Array<GO> coarseNodeIndices,
-                                             const LO rate[3], SC stencil[8]) const;
+      GeometricData() {
+        coarseRate.resize(3);
+        endRate.resize(3);
+        lFineNodesPerDir.resize(3);
+        lCoarseNodesPerDir.resize(3);
+        offsets.resize(6);
+        ghostedCoarseNodesPerDir.resize(3);
+        startIndices.resize(6);
+        gFineNodesPerDir.resize(3);
+        gCoarseNodesPerDir.resize(3);
+        startGhostedCoarseNode.resize(3);
+      }
+    };
 
-    void ComputeLinearInterpolationStencil(const LO numDimension, const double coord[9][3], SC stencil[8]) const;
-    void GetInterpolationFunctions(const LO numDimension, const Teuchos::SerialDenseVector<LO,double> parameters, double functions[4][8]) const;
+    struct NodesIDs {
+      // This small struct just carries basic data associated with coarse nodes that is needed
+      // to compute colMapP and to fillComplete P,
+
+      Array<GO>  GIDs, coarseGIDs;
+      Array<int> PIDs;
+      Array<LO>  LIDs;
+      std::vector<GO> colInds;
+    };
+
+    struct NodeID {
+      // This small struct is similar to the one above but only for one node.
+      // It is used to create a vector of NodeID that can easily be sorted
+
+      GO  GID;
+      int PID;
+      LO  LID, lexiInd;
+    };
+
+    void MeshLayoutInterface(const int interpolationOrder, const LO blkSize,
+                             RCP<const Map> fineCoordsMap, RCP<GeometricData> myGeometry,
+                             RCP<NodesIDs> ghostedCoarseNodes,
+                             Array<Array<GO> >& lCoarseNodesGIDs) const;
+
+    void GetCoarsePoints(const int interpolationOrder, const LO blkSize,
+                         RCP<const Map> fineCoordsMap, RCP<GeometricData> myGeometry,
+                         RCP<NodesIDs> ghostedCoarseNodes,
+                         Array<Array<GO> >& lCoarseNodesGIDs) const;
+
+    void MakeGeneralGeometricP(RCP<GeometricData> myGeo,
+                               const RCP<Xpetra::MultiVector<double,LO,GO,NO> >& fCoords,
+                               const LO nnzP, const LO dofsPerNode,
+                               RCP<const Map>& stridedDomainMapP,
+                               RCP<Matrix> & Amat, RCP<Matrix>& P,
+                               RCP<Xpetra::MultiVector<double,LO,GO,NO> >& cCoords,
+                               RCP<NodesIDs> ghostedCoarseNodes, Array<Array<GO> > coarseNodesGIDs,
+                               int interpolationOrder) const;
+
+    void ComputeStencil(const LO numDimension, const Array<GO> currentNodeIndices,
+                        const Array<GO> coarseNodeIndices, const LO rate[3],
+                        const Array<Array<double> > coord, const int interpolationOrder,
+                        std::vector<double>& stencil) const;
+
+    void ComputeConstantInterpolationStencil(const LO numDimension,
+                                             const Array<GO> currentNodeIndices,
+                                             const Array<GO> coarseNodeIndices,
+                                             const LO rate[3], std::vector<double>& stencil) const;
+
+    void ComputeLinearInterpolationStencil(const LO numDimension, const Array<Array<double> > coord,
+                                           std::vector<double>& stencil) const;
+    void GetInterpolationFunctions(const LO numDimension,
+                                   const Teuchos::SerialDenseVector<LO,double> parameters,
+                                   double functions[4][8]) const;
 
     void sh_sort_permute(
                 const typename Teuchos::Array<LocalOrdinal>::iterator& first1,
@@ -176,6 +244,14 @@ namespace MueLu {
                 const typename Teuchos::Array<LocalOrdinal>::iterator& last1,
                 const typename Teuchos::Array<LocalOrdinal>::iterator& first2,
                 const typename Teuchos::Array<LocalOrdinal>::iterator& last2) const;
+
+    void GetGIDLocalLexicographic(const GO i, const GO j, const GO k,
+                                  const Array<LO> coarseNodeFineIndices,
+                                  const RCP<GeometricData> myGeo, const LO myRankIndex, const LO pi,
+                                  const LO pj, const LO pk,
+                                  const typename std::vector<std::vector<GO> >::iterator blockStart,
+                                  const typename std::vector<std::vector<GO> >::iterator blockEnd,
+                                  GO& myGID, LO& myPID, LO& myLID) const;
 
   }; //class GeneralGeometricPFactory
 

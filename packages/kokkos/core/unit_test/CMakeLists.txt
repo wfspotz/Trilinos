@@ -49,6 +49,7 @@ IF(Kokkos_ENABLE_Serial)
       serial/TestSerial_SubView_c10.cpp
       serial/TestSerial_SubView_c11.cpp
       serial/TestSerial_SubView_c12.cpp
+      serial/TestSerial_SubView_c13.cpp
       serial/TestSerial_Team.cpp
       serial/TestSerial_TeamReductionScan.cpp
       serial/TestSerial_TeamScratch.cpp
@@ -57,6 +58,8 @@ IF(Kokkos_ENABLE_Serial)
       serial/TestSerial_ViewMapping_b.cpp
       serial/TestSerial_ViewMapping_subview.cpp
       serial/TestSerial_ViewOfClass.cpp
+      serial/TestSerial_Crs.cpp
+      serial/TestSerial_WorkGraph.cpp
     COMM serial mpi
     NUM_MPI_PROCS 1
     FAIL_REGULAR_EXPRESSION "  FAILED  "
@@ -94,6 +97,7 @@ IF(Kokkos_ENABLE_Pthread)
       threads/TestThreads_SubView_c10.cpp
       threads/TestThreads_SubView_c11.cpp
       threads/TestThreads_SubView_c12.cpp
+      threads/TestThreads_SubView_c13.cpp
       threads/TestThreads_Team.cpp
       threads/TestThreads_TeamReductionScan.cpp
       threads/TestThreads_TeamScratch.cpp
@@ -102,6 +106,8 @@ IF(Kokkos_ENABLE_Pthread)
       threads/TestThreads_ViewMapping_b.cpp
       threads/TestThreads_ViewMapping_subview.cpp
       threads/TestThreads_ViewOfClass.cpp
+      threads/TestThreads_Crs.cpp
+      threads/TestThreads_WorkGraph.cpp
     COMM serial mpi
     NUM_MPI_PROCS 1
     FAIL_REGULAR_EXPRESSION "  FAILED  "
@@ -139,6 +145,7 @@ IF(Kokkos_ENABLE_OpenMP)
       openmp/TestOpenMP_SubView_c10.cpp
       openmp/TestOpenMP_SubView_c11.cpp
       openmp/TestOpenMP_SubView_c12.cpp
+      openmp/TestOpenMP_SubView_c13.cpp
       openmp/TestOpenMP_Task.cpp
       openmp/TestOpenMP_Team.cpp
       openmp/TestOpenMP_TeamReductionScan.cpp
@@ -147,6 +154,9 @@ IF(Kokkos_ENABLE_OpenMP)
       openmp/TestOpenMP_ViewMapping_b.cpp
       openmp/TestOpenMP_ViewMapping_subview.cpp
       openmp/TestOpenMP_ViewOfClass.cpp
+      openmp/TestOpenMP_Crs.cpp
+      openmp/TestOpenMP_WorkGraph.cpp
+      openmp/TestOpenMP_UniqueToken.cpp
     COMM serial mpi
     NUM_MPI_PROCS 1
     FAIL_REGULAR_EXPRESSION "  FAILED  "
@@ -177,6 +187,7 @@ IF(Kokkos_ENABLE_Qthreads)
       qthreads/TestQthreads_SubView_c10.cpp
       qthreads/TestQthreads_SubView_c11.cpp
       qthreads/TestQthreads_SubView_c12.cpp
+      qthreads/TestQthreads_SubView_c13.cpp
       qthreads/TestQthreads_Team.cpp
       qthreads/TestQthreads_ViewAPI_a.cpp
       qthreads/TestQthreads_ViewAPI_b.cpp
@@ -228,6 +239,7 @@ IF(Kokkos_ENABLE_Cuda)
       cuda/TestCuda_SubView_c10.cpp
       cuda/TestCuda_SubView_c11.cpp
       cuda/TestCuda_SubView_c12.cpp
+      cuda/TestCuda_SubView_c13.cpp
       cuda/TestCuda_Task.cpp
       cuda/TestCuda_Team.cpp
       cuda/TestCuda_TeamReductionScan.cpp
@@ -237,6 +249,8 @@ IF(Kokkos_ENABLE_Cuda)
       cuda/TestCuda_ViewMapping_b.cpp
       cuda/TestCuda_ViewMapping_subview.cpp
       cuda/TestCuda_ViewOfClass.cpp
+      cuda/TestCuda_Crs.cpp
+      cuda/TestCuda_WorkGraph.cpp
     COMM serial mpi
     NUM_MPI_PROCS 1
     FAIL_REGULAR_EXPRESSION "  FAILED  "
@@ -253,6 +267,7 @@ TRIBITS_ADD_EXECUTABLE_AND_TEST(
     default/TestDefaultDeviceType_b.cpp
     default/TestDefaultDeviceType_c.cpp
     default/TestDefaultDeviceType_d.cpp
+    default/TestDefaultDeviceTypeResize.cpp
   COMM serial mpi
   NUM_MPI_PROCS 1
   FAIL_REGULAR_EXPRESSION "  FAILED  "

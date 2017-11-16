@@ -60,7 +60,6 @@
 #include "Panzer_BlockedDOFManager.hpp"
 #include "Panzer_BlockedDOFManagerFactory.hpp"
 #include "Panzer_LinearObjFactory.hpp"
-#include "Panzer_EpetraLinearObjFactory.hpp"
 #include "Panzer_TpetraLinearObjFactory.hpp"
 #include "Panzer_EpetraLinearObjContainer.hpp"
 #include "Panzer_ThyraObjContainer.hpp"
@@ -395,7 +394,7 @@ namespace panzer_stk {
 
     mesh->print(fout);
     if(p.sublist("Output").get<bool>("Write to Exodus"))
-      mesh->setupTransientExodusFile(p.sublist("Output").get<std::string>("File Name"));
+      mesh->setupExodusFile(p.sublist("Output").get<std::string>("File Name"));
 
     // build a workset factory that depends on STK
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -556,7 +555,7 @@ namespace panzer_stk {
        if (has_interface_condition)
          checkInterfaceConnections(conn_manager, dofManager->getComm());
 
-       linObjFactory = Teuchos::rcp(new panzer::EpetraLinearObjFactory<panzer::Traits,int>(mpi_comm,dofManager,useDiscreteAdjoint));
+       linObjFactory = Teuchos::rcp(new panzer::BlockedEpetraLinearObjFactory<panzer::Traits,int>(mpi_comm,dofManager,useDiscreteAdjoint));
 
        // build load balancing string for informative output
        loadBalanceString = printUGILoadBalancingInformation(*dofManager);

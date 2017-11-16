@@ -149,6 +149,11 @@ class NOXSolver
    Teuchos::RCP<NOX::Epetra::Group> grp;
    Teuchos::RCP<LOCA::GlobalData> globalData;
    Teuchos::RCP<LOCA::Epetra::TransposeLinearSystem::AbstractStrategy> tls_strategy;
+   bool writeOnlyConvergedSol;
+   bool exitUponFailedNOXSolve; 
+
+   //Store current iteration of Analysis solver 
+   mutable int current_iteration;
 
    enum DerivativeLayout { OP, COL, ROW };
 

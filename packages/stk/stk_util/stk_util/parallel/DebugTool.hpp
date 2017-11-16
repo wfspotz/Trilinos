@@ -40,16 +40,6 @@
 #include <string>
 #include <iostream>
 
-
-const int STRING_SIZE_TAG = 111;
-const int STRING_TAG = 112;
-const int MESHDATA_SIZE_TAG = 113;
-const int MESHDATA_TAG = 114;
-const int FIELDDATA_SIZE_TAG = 115;
-const int FIELDDATA_TAG = 116;
-//const char *testStringValue = "test string";
-const int oneForNullTerminator = 1;
-
 inline std::string demangleFunctionNames(char** symbollist, int addrlen)
 {
     std::string mangledNamesString("");
@@ -105,12 +95,11 @@ inline std::string demangleFunctionNames(char** symbollist, int addrlen)
 inline std::string getStackTrace()
 {
 #if defined(__GNUC__) && !defined(__ICC)
-    void *trace[16];
-    char **mangledFunctionNames = (char **) nullptr;
-    int trace_size = 0;
-
-    trace_size = backtrace(trace, 16);
-    mangledFunctionNames = backtrace_symbols(trace, trace_size);
+    const int N = 16;
+    void *trace[N];
+    
+    int trace_size = backtrace(trace, N);
+    char** mangledFunctionNames = backtrace_symbols(trace, trace_size);
 
     std::string demangledNames = demangleFunctionNames(mangledFunctionNames, trace_size);
     free(mangledFunctionNames);

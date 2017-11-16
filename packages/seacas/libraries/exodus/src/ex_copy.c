@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2005 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
+ * Copyright (c) 2005 National Technology & Engineering Solutions
+ * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+ * NTESS, the U.S. Government retains certain rights in this software.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -15,7 +15,7 @@
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
  *
- *     * Neither the name of Sandia Corporation nor the names of its
+ *     * Neither the name of NTESS nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -762,18 +762,24 @@ int cpy_var_val(int in_id, int out_id, char *var_nm)
   return (EX_NOERR);
 
 err_ret:
-  if (dim_cnt)
+  if (dim_cnt) {
     free(dim_cnt);
-  if (dim_id_in)
+  }
+  if (dim_id_in) {
     free(dim_id_in);
-  if (dim_id_out)
+  }
+  if (dim_id_out) {
     free(dim_id_out);
-  if (dim_sz)
+  }
+  if (dim_sz) {
     free(dim_sz);
-  if (dim_srt)
+  }
+  if (dim_srt) {
     free(dim_srt);
-  if (void_ptr)
+  }
+  if (void_ptr) {
     free(void_ptr);
+  }
 
   return (EX_FATAL);
 
@@ -908,13 +914,13 @@ size_t type_size(nc_type type)
   if (type == NC_CHAR) {
     return sizeof(char); /* OK */
   }
-  else if (type == NC_INT) {
+  if (type == NC_INT) {
     return sizeof(int); /* OK */
   }
-  else if (type == NC_INT64) {
+  if (type == NC_INT64) {
     return sizeof(int64_t); /* OK */
   }
-  else if (type == NC_FLOAT) {
+  if (type == NC_FLOAT) {
     return sizeof(float); /* OK */
   }
   else if (type == NC_DOUBLE) {

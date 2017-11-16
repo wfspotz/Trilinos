@@ -5,7 +5,7 @@
 #include <queue>
 #include <utility>
 #include <memory>
-#include <iostream>
+#include <limits>
 
 #include "Teuchos_chartab.hpp"
 #include "Teuchos_RCP.hpp"
@@ -13,7 +13,7 @@
 
 namespace Teuchos {
 
-template class Table<int>;
+template struct Table<int>;
 
 FiniteAutomaton::FiniteAutomaton(int nsymbols_init, bool is_deterministic_init,
     int nstates_reserve):
@@ -160,8 +160,8 @@ void unite(FiniteAutomaton& result, FiniteAutomaton const& a, FiniteAutomaton co
   append_states(out, b);
   int epsilon0 = get_epsilon0(out);
   int epsilon1 = get_epsilon1(out);
-  add_transition(out, start_state, epsilon0, a_offset); 
-  add_transition(out, start_state, epsilon1, b_offset); 
+  add_transition(out, start_state, epsilon0, a_offset);
+  add_transition(out, start_state, epsilon1, b_offset);
   using std::swap;
   swap(out, result);
 }
@@ -424,16 +424,53 @@ void add_char_transition(FiniteAutomaton& fa, int from_state, char at_char, int 
   add_transition(fa, from_state, get_symbol(at_char), to_state);
 }
 
+template <typename T, bool is_signed = std::numeric_limits<T>::is_signed>
+struct IsSymbol;
+
+template <typename T>
+struct IsSymbol<T, true> {
+  static bool eval(T c) {
+    if (c < 0) return false;
+    return 0 <= Teuchos::chartab[int(c)];
+  }
+};
+
+template <typename T>
+struct IsSymbol<T, false> {
+  static bool eval(T c) {
+    if (c >= TEUCHOS_CHARTAB_SIZE) return false;
+    return 0 <= Teuchos::chartab[int(c)];
+  }
+};
+
 bool is_symbol(char c) {
-  if (c < 0) return false;
-  return 0 <= Teuchos::chartab[int(c)];
+  return IsSymbol<char>::eval(c);
 }
 
+template <typename T, bool is_signed = std::numeric_limits<T>::is_signed>
+struct GetSymbol;
+
+template <typename T>
+struct GetSymbol<T, true> {
+  static int eval(T c) {
+    TEUCHOS_ASSERT(0 <= c);
+    int symbol = Teuchos::chartab[int(c)];
+    TEUCHOS_ASSERT(0 <= symbol);
+    return symbol;
+  }
+};
+
+template <typename T>
+struct GetSymbol<T, false> {
+  static int eval(T c) {
+    int symbol = Teuchos::chartab[int(c)];
+    TEUCHOS_ASSERT(0 <= symbol);
+    return symbol;
+  }
+};
+
 int get_symbol(char c) {
-  TEUCHOS_ASSERT(0 <= c);
-  int symbol = Teuchos::chartab[int(c)];
-  TEUCHOS_ASSERT(0 <= symbol);
-  return symbol;
+  return GetSymbol<char>::eval(c);
 }
 
 char get_char(int symbol) {

@@ -64,11 +64,20 @@ SET(COMM_TYPE $ENV{JENKINS_COMM_TYPE})
 SET(BUILD_TYPE $ENV{JENKINS_BUILD_TYPE})
 SET(BUILD_DIR_NAME Sierra_${COMM_TYPE}_${BUILD_TYPE}_DEV_ETI_SERIAL-$ENV{JENKINS_DO_SERIAL}_OPENMP-$ENV{JENKINS_DO_OPENMP}_PTHREAD-$ENV{JENKINS_DO_PTHREAD}_CUDA-$ENV{JENKINS_DO_CUDA}_COMPLEX-$ENV{JENKINS_DO_COMPLEX})
 SET(CTEST_PARALLEL_LEVEL 16)
-SET(CTEST_TEST_TYPE $ENV{JENKINS_JOB_TYPE})
+
+# Note: CTEST_TEST_TYPE drives some side-effects in Tribits that should be 
+#       taken into account.  If CTEST_TEST_TYPE is Experimental, Tribits will
+#       override Trilinos_TRACK and *always* assign results to the Experimental
+#       track on CDash.  Also, Tribits does different things based on CTEST_TEST_TYPE
+#       being one of the 3 blessed types (Nightly, Continuous, Experimental), so it's
+#       best to keep CTEST_TEST_TYPE one of these values.  
+SET(CTEST_TEST_TYPE Nightly)
+SET(Trilinos_TRACK  $ENV{JENKINS_JOB_TYPE})
+
 SET(CTEST_TEST_TIMEOUT 900)
 # SET(CTEST_DO_SUBMIT FALSE)
 
-SET(Trilinos_PACKAGES Amesos Amesos2 Anasazi AztecOO Belos Claps Epetra EpetraExt FEI Ifpack Ifpack2 Intrepid Kokkos Mesquite ML MueLu NOX Pamgen RTOp Sacado Shards Teuchos Thyra Tpetra TrilinosSS Triutils TrilinosCouplings Xpetra Zoltan Zoltan2)
+SET(Trilinos_PACKAGES Amesos Amesos2 Anasazi AztecOO Belos Epetra EpetraExt FEI Ifpack Ifpack2 Intrepid Kokkos ML MueLu NOX Pamgen RTOp Sacado Shards Teuchos Thyra Tpetra TrilinosSS Triutils Xpetra Zoltan Zoltan2)
 
 SET(EXTRA_EXCLUDE_PACKAGES Galeri Intrepid2 Isorropia Stratimikos Teko SEACAS STK)
 
@@ -83,6 +92,9 @@ SET(EXTRA_CONFIGURE_OPTIONS
   "-DTPL_ENABLE_CUDA:STRING=$ENV{JENKINS_DO_CUDA}"
   
   "-DFEI_AZTECOO:BOOL=ON"
+  "-DTrilinos_ENABLE_AztecOO:BOOL=ON"
+
+  "-DTrilinos_ENABLE_EpetraExt:BOOL=ON"
 
   "-DKokkos_ENABLE_Pthread:BOOL=$ENV{JENKINS_DO_PTHREAD}"
   "-DKokkos_ENABLE_Cuda_UVM:BOOL=$ENV{JENKINS_DO_CUDA}"
@@ -98,22 +110,29 @@ SET(EXTRA_CONFIGURE_OPTIONS
   "-DTpetra_INST_OPENMP:BOOL=$ENV{JENKINS_DO_OPENMP}"
   "-DTpetra_INST_PTHREAD:BOOL=$ENV{JENKINS_DO_PTHREAD}"
   "-DTpetra_INST_CUDA:BOOL=$ENV{JENKINS_DO_CUDA}"
-  "-DTpetra_INST_COMPLEX_DOUBLE:BOOL=$ENV{JENKINS_DO_COMPLEX}"
+  "-DTrilinos_ENABLE_COMPLEX_DOUBLE:BOOL=$ENV{JENKINS_DO_COMPLEX}"
   "-DTpetra_INST_COMPLEX_FLOAT:BOOL=OFF"
-  "-DTpetra_INST_INT_INT:BOOL=OFF"
+  "-DTpetra_INST_INT_INT:BOOL=ON"
   "-DTpetra_INST_INT_LONG:BOOL=ON"
   "-DTpetra_INST_INT_LONG_LONG:BOOL=OFF"
   "-DTpetra_INST_FLOAT:BOOL=OFF"
   "-DTpetra_INST_DOUBLE:BOOL=ON"
   "-DTpetraCore_ENABLE_TSQR:BOOL=ON"
+  "-DTrilinos_ENABLE_TpetraTSQR:BOOL=ON" 
+  "-DTrilinos_ENABLE_Tpetra:BOOL=ON" 
 
   "-DMueLu_ENABLE_Epetra=OFF"
   "-DMueLu_ENABLE_Tpetra=ON"
+
   "-DAmesos2_ENABLE_Epetra=OFF"
+  "-DAmesos2_CONFIGURE_OPTIONS_FILE:FILEPATH=cmake/ctest/drivers/parameterized/UMFPACK_Settings.cmake"
 
   "-DCMAKE_CXX_FLAGS:STRING=$ENV{JENKINS_CXX_FLAGS}"
   "-DCMAKE_C_FLAGS:STRING=$ENV{JENKINS_C_FLAGS}"
   "-DCMAKE_Fortran_FLAGS=$ENV{JENKINS_Fortran_FLAGS}"
+
+  "-DTrilinos_C_Standard=c11"
+
 )
 
 IF (DEFINED ENV{JENKINS_BLAS_LIBRARY_DIRS})
@@ -124,6 +143,16 @@ ENDIF()
 IF (DEFINED ENV{JENKINS_LAPACK_LIBRARY_DIRS})
     SET(EXTRA_CONFIGURE_OPTIONS ${EXTRA_CONFIGURE_OPTIONS}
         "-DLAPACK_LIBRARY_DIRS=$ENV{JENKINS_LAPACK_LIBRARY_DIRS}")
+ENDIF()
+
+IF (DEFINED ENV{JENKINS_CMAKE_EXE_LINKER_FLAGS})
+    SET(EXTRA_CONFIGURE_OPTIONS ${EXTRA_CONFIGURE_OPTIONS}
+        "-DTrilinos_EXTRA_LINK_FLAGS=$ENV{JENKINS_CMAKE_EXE_LINKER_FLAGS}")
+ENDIF()
+
+IF (DEFINED ENV{JENKINS_CMAKE_DISABLE_MPI_WRAPPER})
+    SET(EXTRA_CONFIGURE_OPTIONS ${EXTRA_CONFIGURE_OPTIONS}
+        "-DMPI_USE_COMPILER_WRAPPERS=OFF")
 ENDIF()
 
 #"-DMPI_EXEC_POST_NUMPROCS_FLAGS:STRING=-bind-to;socket;--map-by;socket"

@@ -107,6 +107,9 @@
 #ifdef HAVE_AMESOS2_UMFPACK     // Umfpack
 #include "Amesos2_Umfpack.hpp"
 #endif
+#ifdef HAVE_AMESOS2_TACHO       // Tacho
+#include "Amesos2_Tacho.hpp"
+#endif
 #ifdef HAVE_AMESOS2_SUPERLU     // Sequential SuperLU
 #include "Amesos2_Superlu.hpp"
 #endif
@@ -523,7 +526,7 @@ struct throw_no_scalar_support_exception {
 
 
 
-#ifdef HAVE_AMESOS2_KLU2 
+#ifdef HAVE_AMESOS2_KLU2
     if((solverName == "amesos2_klu2") || (solverName == "klu2") ||
         (solverName == "amesos2_klu")  || (solverName == "klu")){
       return handle_solver_type_support<KLU2,Matrix,Vector>::apply(A, X, B);
@@ -552,6 +555,13 @@ struct throw_no_scalar_support_exception {
     if((solverName == "amesos2_umfpack") ||
        (solverName == "umfpack")){
       return handle_solver_type_support<Umfpack,Matrix,Vector>::apply(A, X, B);
+    }
+#endif
+
+#ifdef HAVE_AMESOS2_TACHO
+    if((solverName == "amesos2_tacho") ||
+       (solverName == "tacho")){
+      return handle_solver_type_support<TachoSolver,Matrix,Vector>::apply(A, X, B);
     }
 #endif
 
@@ -598,7 +608,7 @@ struct throw_no_scalar_support_exception {
      */
     std::string err_msg = solver_name + " is not enabled or is not supported";
     TEUCHOS_TEST_FOR_EXCEPTION(true, std::invalid_argument, err_msg);
-    return( Teuchos::null );
+    //return( Teuchos::null ); // unreachable
   }
 
 } // end namespace Amesos2

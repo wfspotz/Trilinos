@@ -4,16 +4,20 @@
 #include <stk_util/parallel/CommSparse.hpp>  // for comm_recv_sizes
 #include <stk_util/parallel/MPI.hpp>
 
+#include <iomanip>
+
 #include <stk_search/CommonSearchUtilsInstrumented.hpp>
 #include <stk_search/PrototypeSearchUtilsInstrumented.hpp>
+
 
 namespace stk {
 namespace search {
 namespace experimental {
 
+
 // Greedy brute-force algorithm, just the first thing that came to mind.  Don't know
 // if the output is actually optimal, which needs to be better defined anyway.
-void optimizeTile3D(SuperTile3D &tile, int maxTiles)
+void optimizeTiling3D(SuperTile3D &tile, int maxTiles)
 {
   double inputTileLen[3] = {tile.xLen, tile.yLen, tile.zLen};
   double tileLen[3]      = {tile.xLen, tile.yLen, tile.zLen};
@@ -55,10 +59,6 @@ void optimizeTile3D(SuperTile3D &tile, int maxTiles)
   tile.numZTiles = numTiles[2];
 }
 
-struct TilingIndicesMsg {
-  int xIdx, yIdx, zIdx;
-  int pRank;
-};
 
 void findGhostingRegionResidents(const SuperTile3D &tilingPattern, MPI_Comm comm, int mpiRank, int mpiSize,
                                  const std::vector<TilingIndices> &tilesOccupied,
@@ -77,7 +77,7 @@ void findGhostingRegionResidents(const SuperTile3D &tilingPattern, MPI_Comm comm
         TilingIndicesMsg msg{tileId.xIdx, tileId.yIdx, tileId.zIdx, mpiRank};
         procBuff.pack<TilingIndicesMsg>(msg);
       }
-      else {
+      else if (phase == 1) {
         residencyMap[tileId].push_back(mpiRank);
       }
     }
@@ -104,15 +104,7 @@ void findGhostingRegionResidents(const SuperTile3D &tilingPattern, MPI_Comm comm
   }
 }
 
-enum NeighborMsgTypeEnum {
-  DOMAIN_NEIGHBORING_MSG,
-  RANGE_NEIGHBORING_MSG
-};
 
-struct NeighboringRankMsg {
-  NeighborMsgTypeEnum msgType;
-  int neighborRank;
-};
 
 void witnessAndComputeNeighborRanks(MPI_Comm comm, int mpiSize,
                                     const ResidencyMapT &myDomainResidents,
@@ -120,6 +112,9 @@ void witnessAndComputeNeighborRanks(MPI_Comm comm, int mpiSize,
                                     std::vector<int> &neighborDomainRanks,
                                     std::vector<int> &neighborRangeRanks)
 {
+  int myRank = -1;
+  MPI_Comm_rank(comm, &myRank);
+
   ResidencyMapT::const_iterator domResIter = myDomainResidents.begin();
   ResidencyMapT::const_iterator domResEnd  = myDomainResidents.end();
   ResidencyMapT::const_iterator rngResEnd  = myRangeResidents.end();

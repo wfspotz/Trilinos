@@ -72,11 +72,11 @@ int main(int argc, char *argv[]) {
     int nx      = 80;    // Set spatial discretization.
     int nt      = 80;    // Set temporal discretization.
     RealT T     = 1.0;   // Set end time.
-    RealT alpha = 0.05;  // Set penalty parameter.
-    RealT nu    = 1.e-2; // Set viscosity parameter.
+    RealT alpha = 5e-2;  // Set penalty parameter.
+    RealT nu    = 1e-2;  // Set viscosity parameter.
     Objective_BurgersControl<RealT> obj(alpha,nx,nt,T);
     // Initialize equality constraints
-    EqualityConstraint_BurgersControl<RealT> con(nx, nt, T, nu);
+    Constraint_BurgersControl<RealT> con(nx, nt, T, nu);
     // Initialize iteration vectors.
     Teuchos::RCP<std::vector<RealT> > z_rcp  = Teuchos::rcp( new std::vector<RealT> ((nx+2)*(nt+1), 1.0) );
     Teuchos::RCP<std::vector<RealT> > gz_rcp = Teuchos::rcp( new std::vector<RealT> ((nx+2)*(nt+1), 1.0) );
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
     ROL::StdVector<RealT> p(p_rcp);
     Teuchos::RCP<ROL::Vector<RealT> > pp  = Teuchos::rcp(&p,false);
     Teuchos::RCP<ROL::Objective_SimOpt<RealT> > pobj = Teuchos::rcp(&obj,false);
-    Teuchos::RCP<ROL::EqualityConstraint_SimOpt<RealT> > pcon = Teuchos::rcp(&con,false);
+    Teuchos::RCP<ROL::Constraint_SimOpt<RealT> > pcon = Teuchos::rcp(&con,false);
     ROL::Reduced_Objective_SimOpt<RealT> robj(pobj,pcon,up,zp,pp);
     // Check derivatives.
     robj.checkGradient(z,z,yz,true,*outStream);
@@ -162,6 +162,8 @@ int main(int argc, char *argv[]) {
     // Solve using a composite step method.
     algo = Teuchos::rcp(new ROL::Algorithm<RealT>("Composite Step",*parlist,false));
     x.zero();
+    ROL::Elementwise::Fill<RealT> setFunc(0.25);
+    x.applyUnary(setFunc);
     std::clock_t timer_cs = std::clock();
     algo->run(x,g,l,c,obj,con,true,*outStream);
     *outStream << "Composite Step required " << (std::clock()-timer_cs)/(RealT)CLOCKS_PER_SEC
@@ -171,6 +173,9 @@ int main(int argc, char *argv[]) {
     Teuchos::RCP<ROL::Vector<RealT> > err = z.clone();
     err->set(*zTR); err->axpy(-1.,z);
     errorFlag += (err->norm() > 1.e-4) ? 1 : 0;
+    if (errorFlag) {
+      *outStream << "\n\nControl error = " << err->norm() << "\n";
+    }
 
 //    std::ofstream control;
 //    control.open("control.txt");

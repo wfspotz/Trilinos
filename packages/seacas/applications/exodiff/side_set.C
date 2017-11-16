@@ -1,6 +1,6 @@
-// Copyright(C) 2008 Sandia Corporation.  Under the terms of Contract
-// DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
-// certain rights in this software
+// Copyright(C) 2008 National Technology & Engineering Solutions
+// of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+// NTESS, the U.S. Government retains certain rights in this software.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -14,7 +14,7 @@
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
 //
-//     * Neither the name of Sandia Corporation nor the names of its
+//     * Neither the name of NTESS nor the names of its
 //       contributors may be used to endorse or promote products derived
 //       from this software without specific prior written permission.
 //
@@ -158,11 +158,13 @@ template <typename INT> void Side_Set<INT>::load_sides(const INT *elmt_map) cons
 
 template <typename INT> void Side_Set<INT>::load_df() const
 {
-  if (elmts == nullptr)
+  if (elmts == nullptr) {
     load_sides();
+  }
 
-  if (dist_factors != nullptr)
+  if (dist_factors != nullptr) {
     return; // Already loaded.
+  }
 
   dfIndex = new INT[numEntity + 1];
   SMART_ASSERT(dfIndex != nullptr);
@@ -237,8 +239,9 @@ template <typename INT> size_t Side_Set<INT>::Side_Index(size_t position) const
 
 template <typename INT> const double *Side_Set<INT>::Distribution_Factors() const
 {
-  if (dist_factors == nullptr)
+  if (dist_factors == nullptr) {
     load_df();
+  }
   return dist_factors;
 }
 

@@ -142,6 +142,10 @@ namespace MueLu {
     */
     const RCP<FactoryBase> GetFactoryNonConst(const std::string& varName);
 
+    //! Check
+    // Return true if Factory associated with varName is registered
+    bool hasFactory(const std::string& varName) const;
+
 
     //!
     const RCP<const FactoryBase> GetDefaultFactory(const std::string& varName) const;

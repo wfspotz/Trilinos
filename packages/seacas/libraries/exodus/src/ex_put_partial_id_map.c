@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2007 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
+ * Copyright (c) 2005 National Technology & Engineering Solutions
+ * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
+ * NTESS, the U.S. Government retains certain rights in this software.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -15,7 +15,7 @@
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
  *
- *     * Neither the name of Sandia Corporation nor the names of its
+ *     * Neither the name of NTESS nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -126,13 +126,12 @@ int ex_put_partial_id_map(int exoid, ex_entity_type map_type, int64_t start_enti
     if (num_entities == 0) { /* Parallel run with no entities OK */
       EX_FUNC_LEAVE(EX_NOERR);
     }
-    else {
-      snprintf(errmsg, MAX_ERR_LENGTH, "ERROR: The %s count is %" PRId64
-                                       ", but the %s dimension is not defined on file id %d.",
-               tname, num_entities, dnumentries, exoid);
-      ex_err("ex_put_partial_id_map", errmsg, EX_BADPARAM);
-      EX_FUNC_LEAVE(EX_FATAL);
-    }
+
+    snprintf(errmsg, MAX_ERR_LENGTH, "ERROR: The %s count is %" PRId64
+                                     ", but the %s dimension is not defined on file id %d.",
+             tname, num_entities, dnumentries, exoid);
+    ex_err("ex_put_partial_id_map", errmsg, EX_BADPARAM);
+    EX_FUNC_LEAVE(EX_FATAL);
   }
 
   /* define the map if it doesn't already exist... */

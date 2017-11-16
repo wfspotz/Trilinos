@@ -58,10 +58,10 @@
 //#include <fenv.h>
 
 #include "ROL_Algorithm.hpp"
-#include "ROL_BoundConstraint.hpp"
+#include "ROL_Bounds.hpp"
 #include "ROL_Reduced_Objective_SimOpt.hpp"
 #include "ROL_MonteCarloGenerator.hpp"
-#include "ROL_StochasticProblem.hpp"
+#include "ROL_OptimizationProblem.hpp"
 #include "ROL_TpetraTeuchosBatchManager.hpp"
 
 #include "../TOOLS/meshmanager.hpp"
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
     // Initialize PDE describing advection-diffusion equation
     Teuchos::RCP<PDE_stoch_adv_diff<RealT> > pde
       = Teuchos::rcp(new PDE_stoch_adv_diff<RealT>(*parlist));
-    Teuchos::RCP<ROL::EqualityConstraint_SimOpt<RealT> > con
+    Teuchos::RCP<ROL::Constraint_SimOpt<RealT> > con
       = Teuchos::rcp(new PDE_Constraint<RealT>(pde,meshMgr,serial_comm,*parlist,*outStream));
     Teuchos::RCP<PDE_Constraint<RealT> > pdeCon
       = Teuchos::rcp_dynamic_cast<PDE_Constraint<RealT> >(con);
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
     zlop = Teuchos::rcp(new PDE_OptVector<RealT>(Teuchos::rcp(new ROL::StdVector<RealT>(zlo_rcp))));
     zhip = Teuchos::rcp(new PDE_OptVector<RealT>(Teuchos::rcp(new ROL::StdVector<RealT>(zhi_rcp))));
     Teuchos::RCP<ROL::BoundConstraint<RealT> > bnd
-      = Teuchos::rcp(new ROL::BoundConstraint<RealT>(zlop,zhip));
+      = Teuchos::rcp(new ROL::Bounds<RealT>(zlop,zhip));
 
     /*************************************************************************/
     /***************** BUILD SAMPLER *****************************************/
@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
     /*************************************************************************/
     /***************** SOLVE OPTIMIZATION PROBLEM ****************************/
     /*************************************************************************/
-    Teuchos::RCP<ROL::StochasticProblem<RealT> > opt;
+    Teuchos::RCP<ROL::OptimizationProblem<RealT> > opt;
     Teuchos::RCP<ROL::Algorithm<RealT> > algo;
 
     const int nruns = 7;
@@ -281,11 +281,11 @@ int main(int argc, char *argv[]) {
     // Parameter lists
     std::vector<Teuchos::ParameterList> plvec(7,*parlist);
     // Mean value
-    plvec[0].sublist("SOL").set("Stochastic Optimization Type", "Mean Value");
+    plvec[0].sublist("SOL").set("Stochastic Component Type", "Mean Value");
     // Risk neutral
-    plvec[1].sublist("SOL").set("Stochastic Optimization Type", "Risk Neutral");
+    plvec[1].sublist("SOL").set("Stochastic Component Type", "Risk Neutral");
     // CVaR
-    plvec[2].sublist("SOL").set("Stochastic Optimization Type", "Risk Averse");
+    plvec[2].sublist("SOL").set("Stochastic Component Type", "Risk Averse");
     plvec[2].sublist("SOL").sublist("Risk Measure").set("Name","Quantile-Based Quadrangle");
     plvec[2].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").set("Confidence Level", 0.95);
     plvec[2].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").set("Convex Combination Parameter", 0.0);
@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
     plvec[2].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").sublist("Distribution").sublist("Parabolic").set("Lower Bound", 0.0);
     plvec[2].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").sublist("Distribution").sublist("Parabolic").set("Upper Bound", 1.0);
     // Mixture of expectation and CVaR
-    plvec[3].sublist("SOL").set("Stochastic Optimization Type", "Risk Averse");
+    plvec[3].sublist("SOL").set("Stochastic Component Type", "Risk Averse");
     plvec[3].sublist("SOL").sublist("Risk Measure").set("Name","Quantile-Based Quadrangle");
     plvec[3].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").set("Confidence Level", 0.95);
     plvec[3].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").set("Convex Combination Parameter", 0.5);
@@ -303,15 +303,16 @@ int main(int argc, char *argv[]) {
     plvec[3].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").sublist("Distribution").sublist("Parabolic").set("Lower Bound", 0.0);
     plvec[3].sublist("SOL").sublist("Risk Measure").sublist("Quantile-Based Quadrangle").sublist("Distribution").sublist("Parabolic").set("Upper Bound", 1.0);
     // Entropic risk
-    plvec[4].sublist("SOL").set("Stochastic Optimization Type", "Risk Averse");
+    plvec[4].sublist("SOL").set("Stochastic Component Type", "Risk Averse");
     plvec[4].sublist("SOL").sublist("Risk Measure").set("Name","Exponential Utility");
     plvec[4].sublist("SOL").sublist("Risk Measure").sublist("Exponential Utility").set("Rate", 1.0);
-    // BPOE
-    plvec[5].sublist("SOL").set("Stochastic Optimization Type", "BPOE");
-    plvec[5].sublist("SOL").sublist("BPOE").set("Moment Order", 2.0);
-    plvec[5].sublist("SOL").sublist("BPOE").set("Threshold", 6.0);
+    // bPOE
+    plvec[5].sublist("SOL").set("Stochastic Component Type", "Risk Averse");
+    plvec[5].sublist("SOL").sublist("Risk Measure").set("Name","bPOE");
+    plvec[5].sublist("SOL").sublist("Risk Measure").sublist("bPOE").set("Moment Order", 2.0);
+    plvec[5].sublist("SOL").sublist("Risk Measure").sublist("bPOE").set("Threshold", 6.0);
     // KL-divergence distributionally robust optimization
-    plvec[6].sublist("SOL").set("Stochastic Optimization Type", "Risk Averse");
+    plvec[6].sublist("SOL").set("Stochastic Component Type", "Risk Averse");
     plvec[6].sublist("SOL").sublist("Risk Measure").set("Name","KL Divergence");
     plvec[6].sublist("SOL").sublist("Risk Measure").sublist("KL Divergence").set("Threshold", 0.1);
     
@@ -320,11 +321,11 @@ int main(int argc, char *argv[]) {
       //zp->zero();
 
       // Build stochastic optimization problem
-      opt = Teuchos::rcp(new ROL::StochasticProblem<RealT>(plvec[i],objReduced,sampler,zp,bnd));
-      opt->setSolutionStatistic(stat);
+      opt = Teuchos::rcp(new ROL::OptimizationProblem<RealT>(objReduced,zp,bnd));
+      plvec[i].sublist("SOL").set("Initial Statistic", stat);
+      opt->setStochasticObjective(plvec[i],sampler);
       if (checkDeriv) {
-        opt->checkObjectiveGradient(*dzp,true,*outStream);
-        opt->checkObjectiveHessVec(*dzp,true,*outStream);
+        opt->check(*outStream);
       }
 
       // Solve optimization problem

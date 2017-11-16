@@ -49,16 +49,17 @@
 #include <string>
 #include <type_traits>
 #include "Phalanx_any.hpp"
-#include "Teuchos_ArrayRCP.hpp"
-#include "Phalanx_FieldTag_Tag.hpp"
+#include "Teuchos_RCP.hpp"
 #include "Kokkos_View.hpp"
 #include "Kokkos_DynRankView.hpp"
 #include "Phalanx_KokkosDeviceTypes.hpp"
-#include "Phalanx_MDFieldToKokkos.hpp"
 #include "Phalanx_MDField_TypeTraits.hpp"
 #include "Sacado.hpp"
 
 namespace PHX {
+
+  class DataLayout;
+  class FieldTag;
 
   template<typename DataT,
 	   typename Tag0 = void, typename Tag1 = void, typename Tag2 = void, 
@@ -153,9 +154,11 @@ namespace PHX {
     typedef typename PHX::Device::size_type size_type;
     typedef typename array_type::execution_space execution_space;
  
-    MDField(const std::string& name, const Teuchos::RCP<const PHX::DataLayout>& t);
+    MDField(const std::string& name, const Teuchos::RCP<PHX::DataLayout>& dl);
     
-    MDField(const PHX::Tag<DataT>& v);
+    MDField(const PHX::FieldTag& t);
+
+    MDField(const Teuchos::RCP<const PHX::FieldTag>& t);
 
     MDField();
 
@@ -171,6 +174,8 @@ namespace PHX {
     
     const PHX::FieldTag& fieldTag() const;
 
+    Teuchos::RCP<const PHX::FieldTag> fieldTagPtr() const;
+
     template<typename CopyDataT,
              typename T0 = void, typename T1 = void, typename T2 = void, 
              typename T3 = void, typename T4 = void, typename T5 = void,
@@ -178,56 +183,10 @@ namespace PHX {
     PHX::MDField<DataT,Tag0,Tag1,Tag2,Tag3,Tag4,Tag5,Tag6,Tag7>&
     operator=(const MDField<CopyDataT,T0,T1,T2,T3,T4,T5,T6,T7>& source);    
     
-    template<typename iType0, typename iType1, typename iType2, typename iType3,
-	     typename iType4, typename iType5, typename iType6, typename iType7>
+    template<typename... index_pack>
     KOKKOS_FORCEINLINE_FUNCTION
     typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2, 
-	       iType3 index3, iType4 index4, iType5 index5,
-	       iType6 index6, iType7 index7) const;
-
-    template<typename iType0, typename iType1, typename iType2, typename iType3,
-	     typename iType4, typename iType5, typename iType6>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2, 
-	       iType3 index3, iType4 index4, iType5 index5,
-	       iType6 index6) const;
-
-    template<typename iType0, typename iType1, typename iType2, typename iType3,
-	     typename iType4, typename iType5>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2, 
-	       iType3 index3, iType4 index4, iType5 index5)const;
-    
-    template<typename iType0, typename iType1, typename iType2, typename iType3,
-	     typename iType4>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2, 
-	       iType3 index3, iType4 index4)const;
-    
-    template<typename iType0, typename iType1, typename iType2, typename iType3>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2, 
-	       iType3 index3)const;
-
-    template<typename iType0, typename iType1, typename iType2>
-    KOKKOS_FORCEINLINE_FUNCTION    
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1, iType2 index2)const;
-    
-    template<typename iType0, typename iType1>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0, iType1 index1)const;
-    
-    template<typename iType0>
-    KOKKOS_FORCEINLINE_FUNCTION
-    typename PHX::MDFieldTypeTraits<array_type>::return_type
-    operator()(iType0 index0) const;
+    operator()(const index_pack&...) const;
 
     KOKKOS_FORCEINLINE_FUNCTION
     size_type rank() const;
@@ -283,7 +242,9 @@ namespace PHX {
     KOKKOS_FORCEINLINE_FUNCTION
     size_type size() const;
 
-    void setFieldTag(const PHX::Tag<DataT>& t);
+    void setFieldTag(const PHX::FieldTag& t);
+
+    void setFieldTag(const Teuchos::RCP<const PHX::FieldTag>& t);
     
     void setFieldData(const PHX::any& a);
     
@@ -320,12 +281,11 @@ namespace PHX {
 
   private:
     
-    PHX::Tag<DataT> m_tag;
+    Teuchos::RCP<const PHX::FieldTag> m_tag;
     
     array_type m_field_data;
 
 #ifdef PHX_DEBUG
-    bool m_tag_set;
     bool m_data_set;
     static const std::string m_field_tag_error_msg;
     static const std::string m_field_data_error_msg;

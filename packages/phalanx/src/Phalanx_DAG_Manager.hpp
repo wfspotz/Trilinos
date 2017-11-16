@@ -59,6 +59,8 @@
 #include "Phalanx_TypeStrings.hpp"
 #include "Phalanx_DAG_Node.hpp"
 #include "Teuchos_TimeMonitor.hpp"
+#include "Kokkos_View.hpp"
+#include "Phalanx_DeviceEvaluator.hpp"
 
 #ifdef PHX_ENABLE_KOKKOS_AMT
 #include "Kokkos_TaskScheduler.hpp"
@@ -104,10 +106,14 @@ namespace PHX {
     /*! Calls post registration setup on all evaluators.
     */
     void postRegistrationSetup(typename Traits::SetupData d,
-			       PHX::FieldManager<Traits>& vm);
+			       PHX::FieldManager<Traits>& vm,
+                               const bool& buildDeviceDAG);
     
-    //! Evaluate the required fields using data parallel evalaution on topological sort of tasks.
+    //! Evaluate the required fields using data parallel evaluation on topological sort of tasks. Calls parallel_for for each node in DAG.
     void evaluateFields(typename Traits::EvalData d);
+
+    //! Evaluate the required fields using data parallel evaluation on topological sort of tasks. Uses Device DAG support, calling a single parallel_for for the entire DAG. This could be faster than the call to evaluateFields, but all nodes in the DAG are restricted to the same work_size. This is intended for CUDA builds where kernel launch overhead can be significant.
+    void evaluateFieldsDeviceDag(const int& work_size, typename Traits::EvalData d);
     
 #ifdef PHX_ENABLE_KOKKOS_AMT
     /*! \brief Evaluate the fields using hybrid functional (asynchronous multi-tasking) and data parallelism.
@@ -140,7 +146,18 @@ namespace PHX {
     
     void setEvaluationTypeName(const std::string& evaluation_type_name);
     
-    const std::vector< Teuchos::RCP<PHX::FieldTag> >& getFieldTags();
+
+    /*! Returns the FieldTags for all fields involved in the
+        evaluation. Will return an empty vector unless the user has
+        built the DAG using one of the following calls:
+        postRegistrationSetup(), postRegistrationSetupForType() or
+        buildDagForType().
+
+        WARNING: This is a dangerous power user feature. It returns
+        non-const field tags so that the fields can be sized after the
+        DAG has been created.
+     */
+    const std::vector<Teuchos::RCP<PHX::FieldTag>>& getFieldTags();
 
     bool sortingCalled() const;
 
@@ -250,6 +267,12 @@ namespace PHX {
 
     //! A map that returns all evalautors that bind the memory of a particular field. Key is unique field identifier.  
     std::unordered_map<std::string,std::vector<Teuchos::RCP<PHX::Evaluator<Traits>>>> field_to_evaluators_binding_;
+
+    //! If set to true, allocated DeviceEvaluators for Device DAG for evaluation
+    bool build_device_dag_;
+    
+    //! Contians pointers to DeviceEvaluators for Device DAG support.
+    Kokkos::View<PHX::DeviceEvaluatorPtr<Traits>*,PHX::Device> device_evaluators_;
   };
   
   template<typename Traits>

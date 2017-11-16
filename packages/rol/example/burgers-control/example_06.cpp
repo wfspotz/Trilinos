@@ -127,8 +127,8 @@ int main(int argc, char *argv[]) {
     /************* INITIALIZE SIMOPT EQUALITY CONSTRAINT *********************/
     /*************************************************************************/
     bool hess = true;
-    Teuchos::RCP<ROL::EqualityConstraint_SimOpt<RealT> > pcon
-      = Teuchos::rcp(new EqualityConstraint_BurgersControl<RealT>(fem,hess));
+    Teuchos::RCP<ROL::Constraint_SimOpt<RealT> > pcon
+      = Teuchos::rcp(new Constraint_BurgersControl<RealT>(fem,hess));
     /*************************************************************************/
     /************* INITIALIZE VECTOR STORAGE *********************************/
     /*************************************************************************/
@@ -148,10 +148,12 @@ int main(int argc, char *argv[]) {
       = Teuchos::rcp(new DualControlVector(gz_rcp,fem));
     Teuchos::RCP<ROL::Vector<RealT> > yzp
       = Teuchos::rcp(new PrimalControlVector(yz_rcp,fem));
-    std::vector<RealT> zvar(1,0.0*random<RealT>(comm));
-    std::vector<RealT> gvar(1,random<RealT>(comm));
-    std::vector<RealT> yvar(1,random<RealT>(comm));
-    ROL::RiskVector<RealT> z(zp,zvar,true), g(gzp,gvar,true), y(yzp,yvar,true);
+    RealT zvar = 0.0*random<RealT>(comm);
+    RealT gvar = random<RealT>(comm);
+    RealT yvar = random<RealT>(comm);
+    Teuchos::RCP<Teuchos::ParameterList> hmcrlist = Teuchos::rcp(new Teuchos::ParameterList);
+    hmcrlist->sublist("SOL").sublist("Risk Measure").set("Name","HMCR");
+    ROL::RiskVector<RealT> z(hmcrlist,zp,zvar), g(hmcrlist,gzp,gvar), y(hmcrlist,yzp,yvar);
     // INITIALIZE STATE VECTORS
     Teuchos::RCP<std::vector<RealT> > u_rcp
       = Teuchos::rcp( new std::vector<RealT> (nx, 1.0) );

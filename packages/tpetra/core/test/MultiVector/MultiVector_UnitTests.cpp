@@ -101,7 +101,6 @@ namespace {
   using std::ostream_iterator;
   using std::string;
 
-  using Teuchos::TypeTraits::is_same;
   using Teuchos::RCP;
   using Teuchos::ArrayRCP;
   using Teuchos::rcp;
@@ -1915,13 +1914,20 @@ namespace {
   ////
   TEUCHOS_UNIT_TEST_TEMPLATE_4_DECL( MultiVector, ScaleAndAssign, LO , GO , Scalar , Node )
   {
+    using Teuchos::outArg;
+    using Teuchos::REDUCE_MIN;
+    using Teuchos::reduceAll;
+    typedef typename ScalarTraits<Scalar>::magnitudeType Mag;
+    typedef Tpetra::MultiVector<Scalar,LO,GO,Node> MV;
+    typedef Tpetra::Vector<Scalar,LO,GO,Node>       V;
+
+    int lclSuccess = 1;
+    int gblSuccess = 0; // to be set below
+
     out << "Tpetra::MultiVector scale and assign test" << endl;
     Teuchos::OSTab tab0 (out);
 
     Teuchos::ScalarTraits<Scalar>::seedrandom(0);   // consistent seed
-    typedef typename ScalarTraits<Scalar>::magnitudeType Mag;
-    typedef Tpetra::MultiVector<Scalar,LO,GO,Node> MV;
-    typedef Tpetra::Vector<Scalar,LO,GO,Node>       V;
     const global_size_t INVALID = OrdinalTraits<global_size_t>::invalid();
     const Mag tol = errorTolSlack * testingTol<Scalar>();
     const Mag M0 = ScalarTraits<Mag>::zero();
@@ -1956,6 +1962,14 @@ namespace {
     // * get data view, assign
     TEUCHOS_TEST_FOR_EXCEPT(numVectors < 4);
 
+    lclSuccess = success ? 1 : 0;
+    gblSuccess = 0; // output argument
+    reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+    TEST_EQUALITY_CONST( gblSuccess, 1 );
+    if (! gblSuccess) {
+      return; // no point in continuing
+    }
+
     MV B (map, numVectors, false);
     for (size_t j = 0; j < numVectors; ++j) {
       Teuchos::OSTab tab1 (out);
@@ -1963,6 +1977,20 @@ namespace {
       // assign j-th vector of B to 2 * j-th vector of A
       switch (j % 4) {
         case 0:
+#ifdef HAVE_TPETRA_DEBUG
+          {
+            std::ostringstream os;
+            os << ">>> Proc " << comm->getSize ();
+            auto A_dv = A.getDualView ();
+            os << ": A.modified_host: " << A_dv.modified_host ()
+               << ", A.modified_device: " << A_dv.modified_device ();
+            auto B_dv = B.getDualView ();
+            os << ": B.modified_host: " << B_dv.modified_host ()
+               << ", B.modified_device: " << B_dv.modified_device ();
+            os << std::endl;
+            std::cerr << os.str ();
+          }
+#endif // HAVE_TPETRA_DEBUG
           {
             out << "Method 0" << endl;
 
@@ -1974,6 +2002,13 @@ namespace {
             for (size_t i=0; i < numLocal; ++i) {
               bjview[i] *= as<Scalar>(2);
             }
+          }
+          lclSuccess = success ? 1 : 0;
+          gblSuccess = 0; // output argument
+          reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+          TEST_EQUALITY_CONST( gblSuccess, 1 );
+          if (! gblSuccess) {
+            return; // no point in continuing
           }
           break;
         case 1:
@@ -1988,6 +2023,13 @@ namespace {
             for (size_t i=0; i < numLocal; ++i) {
               bjview[i] *= as<Scalar>(2);
             }
+          }
+          lclSuccess = success ? 1 : 0;
+          gblSuccess = 0; // output argument
+          reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+          TEST_EQUALITY_CONST( gblSuccess, 1 );
+          if (! gblSuccess) {
+            return; // no point in continuing
           }
           break;
         case 2:
@@ -2006,6 +2048,13 @@ namespace {
               bjview[i] *= as<Scalar>(2);
             }
           }
+          lclSuccess = success ? 1 : 0;
+          gblSuccess = 0; // output argument
+          reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+          TEST_EQUALITY_CONST( gblSuccess, 1 );
+          if (! gblSuccess) {
+            return; // no point in continuing
+          }
           break;
         case 3:
           {
@@ -2017,8 +2066,23 @@ namespace {
               bjview[i] = as<Scalar>(2) * ajview[i];
             }
           }
+          lclSuccess = success ? 1 : 0;
+          gblSuccess = 0; // output argument
+          reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+          TEST_EQUALITY_CONST( gblSuccess, 1 );
+          if (! gblSuccess) {
+            return; // no point in continuing
+          }
           break;
       }
+    }
+
+    lclSuccess = success ? 1 : 0;
+    gblSuccess = 0; // output argument
+    reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+    TEST_EQUALITY_CONST( gblSuccess, 1 );
+    if (! gblSuccess) {
+      return; // no point in continuing
     }
 
     out << "Check that A wasn't modified" << endl;
@@ -2063,6 +2127,12 @@ namespace {
       C.norm1(Cnorms());
       TEST_COMPARE_FLOATING_ARRAYS(Cnorms(),zeros,tol);
     }
+
+    // Make sure that we succeeded on all processes.
+    lclSuccess = success ? 1 : 0;
+    gblSuccess = 0; // output argument
+    reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+    TEST_EQUALITY_CONST( gblSuccess, 1 );
   }
 
 
@@ -2809,10 +2879,10 @@ namespace {
     typedef typename MV::local_ordinal_type local_ordinal_type;
     typedef typename MV::global_ordinal_type global_ordinal_type;
     typedef typename MV::node_type node_type;
-    TEST_EQUALITY_CONST( (is_same< scalar_type         , Scalar  >::value) == true, true );
-    TEST_EQUALITY_CONST( (is_same< local_ordinal_type  , LO >::value) == true, true );
-    TEST_EQUALITY_CONST( (is_same< global_ordinal_type , GO >::value) == true, true );
-    TEST_EQUALITY_CONST( (is_same< node_type           , Node    >::value) == true, true );
+    TEST_EQUALITY_CONST( (std::is_same< scalar_type         , Scalar  >::value) == true, true );
+    TEST_EQUALITY_CONST( (std::is_same< local_ordinal_type  , LO >::value) == true, true );
+    TEST_EQUALITY_CONST( (std::is_same< global_ordinal_type , GO >::value) == true, true );
+    TEST_EQUALITY_CONST( (std::is_same< node_type           , Node    >::value) == true, true );
   }
 
 #ifdef HAVE_TEUCHOS_COMPLEX
@@ -2878,21 +2948,21 @@ namespace {
     Teuchos::OSTab tab0 (out);
 
     // Verify that the default Scalar type is double.  We can't put
-    // the is_same expression in the macro, since it has a comma
+    // the std::is_same expression in the macro, since it has a comma
     // (commas separate arguments in a macro).
     const bool defaultScalarIsDouble =
-      Teuchos::TypeTraits::is_same<scalar_type, double>::value;
+      std::is_same<scalar_type, double>::value;
     TEST_ASSERT( defaultScalarIsDouble );
 
     // Verify that the default LocalOrdinal type is the same as Map's
     // default LocalOrdinal type.  This assumes that all of Map's
     // template parameters have default values.
     //
-    // We can't put the is_same expression in the macro, since it has
+    // We can't put the std::is_same expression in the macro, since it has
     // a comma (commas separate arguments in a macro).
     typedef Tpetra::Map<>::local_ordinal_type map_local_ordinal_type;
     const bool defaultLocalOrdinalIsInt =
-      Teuchos::TypeTraits::is_same<local_ordinal_type, map_local_ordinal_type>::value;
+      std::is_same<local_ordinal_type, map_local_ordinal_type>::value;
     TEST_ASSERT( defaultLocalOrdinalIsInt );
 
     // Verify that the default GlobalOrdinal type has size no less
@@ -3425,7 +3495,7 @@ namespace {
     const Scalar TWO = ONE + ONE;
     const Scalar THREE = TWO + ONE;
     int lclSuccess = 1;
-    int gblSuccess = 1;
+    int gblSuccess = 0; // to be set below
 
     // We'll need this for error checking before we need it in Tpetra.
     RCP<const Comm<int> > comm = getDefaultComm ();
@@ -3438,12 +3508,38 @@ namespace {
     // Modify the Kokkos::View's data.
     Kokkos::deep_copy (X_lcl, ONE);
 
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 1" << std::endl;
+      std::cerr << os.str ();
+    }
+
     // Hand off the Kokkos::View to a Tpetra::MultiVector.
     const GST INVALID = Teuchos::OrdinalTraits<GST>::invalid ();
     const GO indexBase = 0;
     RCP<const map_type> map =
       rcp (new map_type (INVALID, numLclRows, indexBase, comm));
     MV X_gbl (map, X_lcl);
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 2" << std::endl;
+      std::cerr << os.str ();
+    }
 
     // Make sure (using an independent mechanism, in this case the
     // inf-norm) that X_gbl's constructor didn't change the values in
@@ -3455,6 +3551,19 @@ namespace {
     norms.template sync<Kokkos::HostSpace> ();
     for (size_t k = 0; k < numVecs; ++k) {
       TEST_EQUALITY_CONST( norms.h_view(k), ONE );
+    }
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 3" << std::endl;
+      std::cerr << os.str ();
     }
 
     // Now change the values in X_lcl.  X_gbl should see them.  Be
@@ -3475,15 +3584,68 @@ namespace {
       TEST_EQUALITY_CONST( norms.h_view(k), TWO );
     }
 
+    {
+      std::ostringstream os;
+      os << ">>> Proc " << comm->getSize ();
+      auto X_gbl_dv = X_gbl.getDualView ();
+      os << ": X_gbl.modified_host: " << X_gbl_dv.modified_host ()
+         << ", X_gbl.modified_device: " << X_gbl_dv.modified_device ();
+      os << std::endl;
+      std::cerr << os.str ();
+    }
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 4" << std::endl;
+      std::cerr << os.str ();
+    }
+
     // Just as X_gbl views X_lcl, X_lcl should also view X_gbl.  Thus,
     // if we modify X_gbl in host memory, and sync to device memory,
     // X_lcl should also be changed.
 
+    // We modified on device above, and we're about to modify on host
+    // now, so we need to sync to host first.
+    X_gbl.template sync<Kokkos::HostSpace> ();
+
     auto X_host = X_gbl.template getLocalView<Kokkos::HostSpace> ();
     X_gbl.template modify<Kokkos::HostSpace> ();
 
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 5" << std::endl;
+      std::cerr << os.str ();
+    }
+
     Kokkos::deep_copy (X_host, THREE);
     X_gbl.template sync<device_type> ();
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 6" << std::endl;
+      std::cerr << os.str ();
+    }
 
     // FIXME (mfh 01 Mar 2015) We avoid writing a separate functor to
     // check the contents of X_lcl, by copying to host and checking
@@ -3492,6 +3654,19 @@ namespace {
     typename dual_view_type::t_dev::HostMirror X_lcl_host =
       Kokkos::create_mirror_view (X_lcl);
     Kokkos::deep_copy(X_lcl_host,X_lcl);
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": checkpoint 7" << std::endl;
+      std::cerr << os.str ();
+    }
 
     bool same = true;
     for (size_t j = 0; j < numVecs; ++j) {
@@ -3509,6 +3684,19 @@ namespace {
     if (gblSuccess != 1) {
       out << "We modified X_gbl in host memory, and sync'd to device memory, "
         "but X_lcl did not change!" << endl;
+    }
+
+    {
+      lclSuccess = success ? 1 : 0;
+      gblSuccess = 0; // output argument
+      reduceAll<int, int> (*comm, REDUCE_MIN, lclSuccess, outArg (gblSuccess));
+      TEST_EQUALITY_CONST(gblSuccess, 1);
+      if (gblSuccess != 1) {
+        return;
+      }
+      std::ostringstream os;
+      os << "Proc " << comm->getRank () << ": DONE" << std::endl;
+      std::cerr << os.str ();
     }
   }
 
