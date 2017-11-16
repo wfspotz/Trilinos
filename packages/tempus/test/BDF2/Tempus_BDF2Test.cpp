@@ -64,9 +64,9 @@ TEUCHOS_UNIT_TEST(BDF2, ParameterList)
       Tempus::integratorBasic<double>(tempusPL, model);
 
     RCP<ParameterList> stepperPL = sublist(tempusPL, "Default Stepper", true);
-    // Remove Predictor for comparison
-    stepperPL->remove("Predictor Name");
-    stepperPL->remove("Default Predictor");
+    // Remove Start Up Stepper for comparison
+    stepperPL->remove("Start Up Stepper Name");
+    stepperPL->remove("Default Start Up Stepper");
     RCP<ParameterList> defaultPL =
       integrator->getStepper()->getDefaultParameters();
     TEST_ASSERT(haveSameValues(*stepperPL,*defaultPL))

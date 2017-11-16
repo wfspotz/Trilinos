@@ -63,9 +63,9 @@ public:
     virtual void setObserver(
       Teuchos::RCP<StepperBDF2Observer<Scalar> > obs = Teuchos::null);
 
-    /// Set the predictor
-    void setPredictor(std::string predictorName);
-    void setPredictor(Teuchos::RCP<Teuchos::ParameterList>predPL=Teuchos::null);
+    /// Set the stepper to use in first step 
+    void setStartUpStepper(std::string startupStepperName);
+    void setStartUpStepper(Teuchos::RCP<Teuchos::ParameterList>startUpStepperPL=Teuchos::null);
 
     /// Initialize during construction and after changing input parameters.
     virtual void initialize();
@@ -79,12 +79,16 @@ public:
     virtual Scalar getOrder() const {return 1.0;}
     virtual Scalar getOrderMin() const {return 1.0;}
     virtual Scalar getOrderMax() const {return 1.0;}
+    //IKT, FIXME: uncomment the following for BDF2
+    //virtual Scalar getOrder() const {return 2.0;}
+    //virtual Scalar getOrderMin() const {return 2.0;}
+    //virtual Scalar getOrderMax() const {return 2.0;}
   //@}
 
-  /// Compute predictor given the supplied stepper
-  virtual void computePredictor(
+  /// Compute the first time step given the supplied startup stepper
+  virtual void computeStartUp(
     const Teuchos::RCP<SolutionHistory<Scalar> >& solutionHistory);
-
+  
   /// \name ParameterList methods
   //@{
     void setParameterList(const Teuchos::RCP<Teuchos::ParameterList> & pl);
@@ -111,7 +115,7 @@ private:
   Teuchos::RCP<Teuchos::ParameterList>               stepperPL_;
   Teuchos::RCP<WrapperModelEvaluator<Scalar> >       wrapperModel_;
   Teuchos::RCP<Thyra::NonlinearSolverBase<Scalar> >  solver_;
-  Teuchos::RCP<Stepper<Scalar> >                     predictorStepper_;
+  Teuchos::RCP<Stepper<Scalar> >                     startUpStepper_;
 
   Teuchos::RCP<StepperBDF2Observer<Scalar> > stepperBDF2Observer_;
 };
@@ -140,6 +144,13 @@ public:
     Scalar s, Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld)
   { initialize(s, xOld); }
 
+  /// Constructor for BDF2 
+  // IKT, FIXME: replace above code with this code 
+  StepperBDF2TimeDerivative(
+    Scalar dt, Scalar dtOld, Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld, 
+    Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld)
+  { initialize(dt, dtOld, xOld, xOldOld); }
+
   /// Destructor
   virtual ~StepperBDF2TimeDerivative() {}
 
@@ -153,16 +164,37 @@ public:
     // Calculate the BDF2 x dot vector
     // IKT, FIXME: currently this is for BE; change to BDF2 
     Thyra::V_StVpStV(xDot.ptr(),s_,*x,-s_,*xOld_);
+    //IKT, FIXME: uncomment the following to change to BDF2
+    /*const Scalar a = (1.0/(dt_ + dtOld_))*(2.0*dt_ + dtOld_)/dt_;
+    const Scalar b = (1.0/(dt_ + dtOld_))*(dt_/dtOld_);
+    //xDot = a*(x_n-x_{n-1})
+    Thyra::V_StVpStV(xDot.ptr(),a,*x,-a,*xOld_);
+    Teuchos::RCP<const Thyra::VectorBase<Scalar> > tmp =
+      Thyra::createMember<Scalar>(x->space());
+    //tmp = b*(x_{n-1} - x_{n-2})
+    Thyra::V_StVpStV(tmp.ptr(),b,*xOld_,-b,*xOldOld_);
+    //xDot = xDot - tmp;
+    Thyra::Vp_StV(xDot.ptr(), -1.0, *tmp); */
   }
 
   virtual void initialize(Scalar s,
     Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld)
   { s_ = s; xOld_ = xOld; }
 
+  //IKT, FIXME: remove the above routine when ready
+  virtual void initialize(Scalar dt, Scalar dtOld, 
+    Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld,
+    Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld)
+  { dt_ = dt; dtOld_ = dtOld; xOld_ = xOld; xOldOld_ = xOldOld;}
+
 private:
 
   Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld_;
+  Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld_;
+  //IKT, FIXME: remove s_ as member variable when ready 
   Scalar                                         s_;    // = 1.0/dt
+  Scalar                                         dt_;    // = t_n - t_{n-1}
+  Scalar                                         dtOld_;    // = t_{n-1} - t_{n-2}
 };
 
 

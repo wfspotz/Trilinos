@@ -46,7 +46,7 @@
 
       <Parameter name="Stepper Type"   type="string" value="BDF2"/>
       <Parameter name="Solver Name"    type="string" value="Demo Solver"/>
-      <Parameter name="Predictor Name" type="string" value="Demo Predictor"/>
+      <Parameter name="Start Up Stepper Name" type="string" value="Demo Start Up Stepper"/>
 
       <ParameterList name="Demo Solver">
         <ParameterList name="NOX">
@@ -98,7 +98,7 @@
         </ParameterList>
       </ParameterList>
 
-      <ParameterList name="Demo Predictor">
+      <ParameterList name="Demo Start Up Stepper">
         <Parameter name="Stepper Type" type="string" value="Forward Euler"/>
       </ParameterList>
 
