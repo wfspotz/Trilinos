@@ -225,14 +225,16 @@ void StepperBDF2<Scalar>::takeStep(
   TEMPUS_FUNC_TIME_MONITOR("Tempus::StepperBDF2::takeStep()");
   {
     int numStates = solutionHistory->getNumStates(); 
+
+
     //If we are on first time step, call startup stepper 
     //There is test of exception in computeStartUp that start up stepper 
     //did not fail, so no need to check for failure here.
     //FIXME, IKT: uncomment the following when ready to test start up stepper
-    /*if (numStates < 3) {
+    if (numStates < 3) {
       computeStartUp(solutionHistory);
-    }*/
-
+    }
+   
     stepperBDF2Observer_->observeBeginTakeStep(solutionHistory, *this);
     
     RCP<SolutionState<Scalar> > workingState=solutionHistory->getWorkingState();
