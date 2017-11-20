@@ -31,6 +31,12 @@
 #include <sstream>
 #include <limits>
 
+//IKT, 11/20/17: comment out any of the following 
+//if you wish not to build/run all the test cases.
+#define TEST_CDR
+#define TEST_SINCOS
+#define TEST_VANDERPOL
+
 namespace Tempus_Test {
 
 using Teuchos::RCP;
@@ -88,6 +94,7 @@ TEUCHOS_UNIT_TEST(BDF2, ParameterList)
 
 // ************************************************************
 // ************************************************************
+#ifdef TEST_SINCOS
 TEUCHOS_UNIT_TEST(BDF2, SinCos)
 {
   std::vector<double> StepSize;
@@ -190,9 +197,12 @@ TEUCHOS_UNIT_TEST(BDF2, SinCos)
   }
   ftmp.close();
 }
+#endif //TEST_SINCOS
+
 
 // ************************************************************
 // ************************************************************
+#ifdef TEST_CDR
 TEUCHOS_UNIT_TEST(BDF2, CDR)
 {
   // Create a communicator for Epetra objects
@@ -361,9 +371,11 @@ TEUCHOS_UNIT_TEST(BDF2, CDR)
 
   Teuchos::TimeMonitor::summarize();
 }
+#endif //TEST_CDR
 
 // ************************************************************
 // ************************************************************
+#ifdef TEST_VANDERPOL
 TEUCHOS_UNIT_TEST(BDF2, VanDerPol)
 {
   std::vector<RCP<Thyra::VectorBase<double>>> solutions;
@@ -468,6 +480,6 @@ TEUCHOS_UNIT_TEST(BDF2, VanDerPol)
 
   Teuchos::TimeMonitor::summarize();
 }
-
+#endif //TEST_VANDERPOL
 
 } // namespace Tempus_Test
