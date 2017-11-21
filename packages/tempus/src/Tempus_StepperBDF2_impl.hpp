@@ -256,7 +256,8 @@ void StepperBDF2<Scalar>::takeStep(
     if (numStates > 2) {
       //get previous 2 states
       xOld = (*solutionHistory)[numStates-2]->getX(); 
-      xOldOld = (*solutionHistory)[numStates-3]->getX(); 
+      xOldOld = (*solutionHistory)[numStates-3]->getX();
+      order_ = 2.0;  
     }
     //IKT: the following is logic for returning getCurrentState(): 
     //if      (getNumStates() > 1) currentState_ = (*history_)[getNumStates()-2];
