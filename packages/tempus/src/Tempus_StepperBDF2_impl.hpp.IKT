@@ -226,21 +226,21 @@ void StepperBDF2<Scalar>::takeStep(
   {
     int numStates = solutionHistory->getNumStates(); 
 
-    RCP<Thyra::VectorBase<Scalar> > xOld;
-    RCP<Thyra::VectorBase<Scalar> > xOldOld;
 
     //If we are on first time step, call startup stepper 
     //There is test of exception in computeStartUp that start up stepper 
     //did not fail, so no need to check for failure here.
     if (numStates < 3) {
       computeStartUp(solutionHistory);
-      numStates = solutionHistory->getNumStates();  
     }
-
+   
     stepperBDF2Observer_->observeBeginTakeStep(solutionHistory, *this);
     
     RCP<SolutionState<Scalar> > workingState=solutionHistory->getWorkingState();
     RCP<SolutionState<Scalar> > currentState=solutionHistory->getCurrentState();
+
+    RCP<Thyra::VectorBase<Scalar> > xOld = currentState->getX();
+    RCP<Thyra::VectorBase<Scalar> > xOldOld;
 
     RCP<Thyra::VectorBase<Scalar> > x    = workingState->getX();
     RCP<Thyra::VectorBase<Scalar> > xDot = workingState->getXDot();

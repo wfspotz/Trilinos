@@ -78,11 +78,7 @@ public:
     virtual Teuchos::RCP<Tempus::StepperState<Scalar> > getDefaultStepperState();
     virtual Scalar getOrder() const {return 1.0;}
     virtual Scalar getOrderMin() const {return 1.0;}
-    virtual Scalar getOrderMax() const {return 1.0;}
-    //IKT, FIXME: uncomment the following for BDF2
-    //virtual Scalar getOrder() const {return 2.0;}
-    //virtual Scalar getOrderMin() const {return 2.0;}
-    //virtual Scalar getOrderMax() const {return 2.0;}
+    virtual Scalar getOrderMax() const {return 2.0;}
   //@}
 
   /// Compute the first time step given the supplied startup stepper
@@ -141,12 +137,6 @@ public:
 
   /// Constructor
   StepperBDF2TimeDerivative(
-    Scalar s, Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld)
-  { initialize(s, xOld); }
-
-  /// Constructor for BDF2 
-  // IKT, FIXME: replace above code with this code 
-  StepperBDF2TimeDerivative(
     Scalar dt, Scalar dtOld, Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld, 
     Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld)
   { initialize(dt, dtOld, xOld, xOldOld); }
@@ -162,26 +152,18 @@ public:
   {
     xDotDot = Teuchos::null;
     // Calculate the BDF2 x dot vector
-    // IKT, FIXME: currently this is for BE; change to BDF2 
-    Thyra::V_StVpStV(xDot.ptr(),s_,*x,-s_,*xOld_);
-    //IKT, FIXME: uncomment the following to change to BDF2
-    /*const Scalar a = (1.0/(dt_ + dtOld_))*(2.0*dt_ + dtOld_)/dt_;
+    const Scalar a = (1.0/(dt_ + dtOld_))*(2.0*dt_ + dtOld_)/dt_;
     const Scalar b = (1.0/(dt_ + dtOld_))*(dt_/dtOld_);
     //xDot = a*(x_n-x_{n-1})
     Thyra::V_StVpStV(xDot.ptr(),a,*x,-a,*xOld_);
-    Teuchos::RCP<const Thyra::VectorBase<Scalar> > tmp =
+    Teuchos::RCP<Thyra::VectorBase<Scalar> > tmp =
       Thyra::createMember<Scalar>(x->space());
     //tmp = b*(x_{n-1} - x_{n-2})
     Thyra::V_StVpStV(tmp.ptr(),b,*xOld_,-b,*xOldOld_);
     //xDot = xDot - tmp;
-    Thyra::Vp_StV(xDot.ptr(), -1.0, *tmp); */
+    Thyra::Vp_StV(xDot.ptr(), -1.0, *tmp); 
   }
 
-  virtual void initialize(Scalar s,
-    Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld)
-  { s_ = s; xOld_ = xOld; }
-
-  //IKT, FIXME: remove the above routine when ready
   virtual void initialize(Scalar dt, Scalar dtOld, 
     Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld,
     Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld)
@@ -191,8 +173,6 @@ private:
 
   Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOld_;
   Teuchos::RCP<const Thyra::VectorBase<Scalar> > xOldOld_;
-  //IKT, FIXME: remove s_ as member variable when ready 
-  Scalar                                         s_;    // = 1.0/dt
   Scalar                                         dt_;    // = t_n - t_{n-1}
   Scalar                                         dtOld_;    // = t_{n-1} - t_{n-2}
 };
