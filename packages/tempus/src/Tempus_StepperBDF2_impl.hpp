@@ -213,6 +213,7 @@ void StepperBDF2<Scalar>::initialize()
   this->setSolver();
   this->setStartUpStepper();
   this->setObserver();
+  order_ = 2.0; 
 }
 
 
@@ -308,6 +309,8 @@ void StepperBDF2<Scalar>::computeStartUp(
 
   //Take one step using startUpStepper_
   startUpStepper_->takeStep(solutionHistory);
+
+  order_ = startUpStepper_->getOrder(); 
 
   Status & stepperStatus =
     solutionHistory->getWorkingState()->getStepperState()->stepperStatus_;

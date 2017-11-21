@@ -76,7 +76,7 @@ public:
 
     /// Get a default (initial) StepperState
     virtual Teuchos::RCP<Tempus::StepperState<Scalar> > getDefaultStepperState();
-    virtual Scalar getOrder() const {return 1.0;}
+    virtual Scalar getOrder() const {return order_;}
     virtual Scalar getOrderMin() const {return 1.0;}
     virtual Scalar getOrderMax() const {return 2.0;}
   //@}
@@ -114,6 +114,7 @@ private:
   Teuchos::RCP<Stepper<Scalar> >                     startUpStepper_;
 
   Teuchos::RCP<StepperBDF2Observer<Scalar> > stepperBDF2Observer_;
+  Scalar                                             order_; 
 };
 
 /** \brief Time-derivative interface for BDF2.
