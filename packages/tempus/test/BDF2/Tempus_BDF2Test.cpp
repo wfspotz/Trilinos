@@ -9,6 +9,7 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
 #include "Teuchos_TimeMonitor.hpp"
+#include "Teuchos_DefaultComm.hpp"
 
 #include "Tempus_config.hpp"
 #include "Tempus_IntegratorBasic.hpp"
@@ -27,9 +28,10 @@
 #include "Epetra_SerialComm.h"
 #endif
 
-#include <vector>
-#include <sstream>
+#include <fstream>
 #include <limits>
+#include <sstream>
+#include <vector>
 
 //IKT, 11/20/17: comment out any of the following 
 //if you wish not to build/run all the test cases.
