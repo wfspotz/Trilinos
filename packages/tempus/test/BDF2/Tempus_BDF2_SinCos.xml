@@ -20,7 +20,7 @@
       <Parameter name="Stepper Name"       type="string" value="Default Stepper"/>
       <ParameterList name="Solution History">
         <Parameter name="Storage Type"  type="string" value="Static"/>
-        <!--IKT the following can be as low as 3; setting it to 11 to write sull Tempus_BDF2_SinCos.dat file--/>
+        <!--IKT the following can be as low as 3; setting it to 11 to write sull Tempus_BDF2_SinCos.dat file-->
         <Parameter name="Storage Limit" type="int"    value="11"/>
       </ParameterList>
       <ParameterList name="Time Step Control">
