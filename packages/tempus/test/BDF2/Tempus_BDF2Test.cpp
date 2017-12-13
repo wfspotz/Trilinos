@@ -402,19 +402,25 @@ TEUCHOS_UNIT_TEST(BDF2, VanDerPol)
   std::vector<RCP<Thyra::VectorBase<double>>> solutions;
   std::vector<double> StepSize;
   std::vector<double> ErrorNorm;
-  const int nTimeStepSizes = 3;
-  double dt = 0.0125; 
+
+  // Read params from .xml file
+  RCP<ParameterList> pList =
+    getParametersFromXmlFile("Tempus_BDF2_VanDerPol.xml");
+  //Set initial time step = 2*dt specified in input file (for convergence study)
+  //
+  RCP<ParameterList> pl = sublist(pList, "Tempus", true);
+  double dt = pl->sublist("Demo Integrator")
+       .sublist("Time Step Control").get<double>("Initial Time Step");
+  dt *= 2.0;
+
+  RCP<ParameterList> vdpm_pl = sublist(pList, "VanDerPolModel", true);
+  const int nTimeStepSizes = vdpm_pl->get<int>("Number of Time Step Sizes", 3); 
   //const int nTimeStepSizes = 5;
-  //double dt = 0.0125;
   double order = 0.0;
+
   for (int n=0; n<nTimeStepSizes; n++) {
 
-    // Read params from .xml file
-    RCP<ParameterList> pList =
-      getParametersFromXmlFile("Tempus_BDF2_VanDerPol.xml");
-
     // Setup the VanDerPolModel
-    RCP<ParameterList> vdpm_pl = sublist(pList, "VanDerPolModel", true);
     RCP<VanDerPolModel<double> > model =
       Teuchos::rcp(new VanDerPolModel<double>(vdpm_pl));
 
@@ -479,16 +485,18 @@ TEUCHOS_UNIT_TEST(BDF2, VanDerPol)
     ErrorNorm.push_back(L2norm);
   }
 
-  // Check the order and intercept
-  double slope = computeLinearRegressionLogLog<double>(StepSizeCheck,ErrorNorm);
-  std::cout << "  Stepper = BDF2" << std::endl;
-  std::cout << "  =========================" << std::endl;
-  std::cout << "  Expected order: " << order << std::endl;
-  std::cout << "  Observed order: " << slope << std::endl;
-  std::cout << "  =========================" << std::endl;
-  TEST_FLOATING_EQUALITY( slope, order, 0.10 );
-  out << "\n\n ** Slope on BDF2 Method = " << slope
-      << "\n" << std::endl;
+  if (nTimeStepSizes > 2) {
+    // Check the order and intercept
+    double slope = computeLinearRegressionLogLog<double>(StepSizeCheck,ErrorNorm);
+    std::cout << "  Stepper = BDF2" << std::endl;
+    std::cout << "  =========================" << std::endl;
+    std::cout << "  Expected order: " << order << std::endl;
+    std::cout << "  Observed order: " << slope << std::endl;
+    std::cout << "  =========================" << std::endl;
+    TEST_FLOATING_EQUALITY( slope, order, 0.10 );
+    out << "\n\n ** Slope on BDF2 Method = " << slope
+        << "\n" << std::endl;
+  }
 
   // Write error data
   {
