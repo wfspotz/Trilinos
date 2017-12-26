@@ -172,8 +172,10 @@ void TimeStepControl<Scalar>::getNextTimeStep(
         <<getMaxOrder()<< "]\n"
         "    order = " << order << "\n");
 
-    } else { // VARIABLE_STEP_SIZE
+    } 
 
+    else if (getStepType() == "Variable")  
+    {
       // \todo The following controls should be generalized to plugable options.
       Scalar dt_adjustment_factor = 0.5; 
       if (stepperState->stepperStatus_ == Status::FAILED) dt *= dt_adjustment_factor;
@@ -184,6 +186,42 @@ void TimeStepControl<Scalar>::getNextTimeStep(
 
       if (dt < getMinTimeStep()) dt = getMinTimeStep();
       if (dt > getMaxTimeStep()) dt = getMaxTimeStep();
+    }
+
+    else if (getStepType() == "Variable Denner")  
+    {
+      //Section 2.2.1 / Algorithm 2.4 of A. Denner, "Experiments on 
+      //Temporal Variable Step BDF2 Algorithms", Masters Thesis, U Wisconsin-Madison, 2014.
+      //IKT, FIXME: to implement!
+      Scalar dt_min = getMinTimeStep(); 
+      Scalar dt_max = getMinTimeStep(); 
+      Scalar rho    = getAmplFactor(); 
+      Scalar sigma  = getReductFactor();
+      RCP<Teuchos::FancyOStream> out = this->getOStream();
+      *out << "\nIKT rho, sigma = " << rho << ", " << sigma << "\n"; 
+      Scalar eta = computeEta(); 
+      if (dt < getMinTimeStep()) dt = getMinTimeStep();
+      if (dt > getMaxTimeStep()) dt = getMaxTimeStep();
+      //IKT, FIXME: do we want the following checks (from Variable Step 
+      //Type) / time step modificationshere? 
+      /*if (errorAbs > getMaxAbsError()) dt *= dt_adjustment_factor;
+      if (errorRel > getMaxRelError()) dt *= dt_adjustment_factor;
+      if (order < getMinOrder()) dt /= dt_adjustment_factor;
+      if (order > getMaxOrder()) dt *= dt_adjustment_factor;*/
+      if (stepperState->stepperStatus_ == Status::FAILED) { //Stepper failed, reduce dt
+        dt *= rho;
+      }
+      else { //Stepper passed
+        if (eta < getMinEta()) { // reduce dt
+          dt *= rho; 
+        }
+        else if (eta > getMaxEta()) { //increase dt 
+          dt *= sigma; 
+        }
+      }
+      TEUCHOS_TEST_FOR_EXCEPTION(
+        true, std::out_of_range,
+        "Integrator Step Type = 'Variable Denner' not implemented yet!\n");
     }
 
     // Adjust time step to hit final time or correct for small
@@ -261,6 +299,19 @@ template<class Scalar>
 bool TimeStepControl<Scalar>::indexInRange(const int iStep) const{
   bool iir = (getInitIndex() <= iStep and iStep < getFinalIndex());
   return iir;
+}
+
+template<class Scalar>
+Scalar TimeStepControl<Scalar>::computeEta() 
+{
+  using Teuchos::RCP;
+  const double eps = std::numeric_limits<double>::epsilon();
+  Scalar eta_min  = getMinEta(); 
+  Scalar eta_max  = getMaxEta();
+  RCP<Teuchos::FancyOStream> out = this->getOStream();
+  *out << "\nIKT eta_min, eta_max, eps = " << eta_min << ", " << eta_max << ", " << eps << "\n";   //eta = ||x^(n+1)-x^n||/(||x^n||+eps)
+  Scalar eta; //IKT, FIXME: fill in! 
+  return eta;  
 }
 
 template<class Scalar>
@@ -386,11 +437,13 @@ void TimeStepControl<Scalar>::setParameterList(
     << "    order = " << getInitOrder()  << "\n");
 
   TEUCHOS_TEST_FOR_EXCEPTION(
-    (getStepType() != "Constant" and getStepType() != "Variable"),
+    (getStepType() != "Constant" and getStepType() != "Variable" 
+     and getStepType() != "Variable Denner"),
     std::out_of_range,
       "Error - 'Integrator Step Type' does not equal none of these:\n"
     << "  'Constant' - Integrator will take constant time step sizes.\n"
     << "  'Variable' - Integrator will allow changes to the time step size.\n"
+    << "  'Variable Denner' - Integrator will allow changes to the time step size.\n"
     << "  stepType = " << getStepType()  << "\n");
 
   // Parse output times
@@ -462,13 +515,19 @@ TimeStepControl<Scalar>::getValidParameters() const
 
   const double stdMin = std::numeric_limits<double>::epsilon();
   const double stdMax = std::numeric_limits<double>::max();
-  pl->set<double>("Initial Time"      , 0.0    , "Initial time");
-  pl->set<double>("Final Time"        , stdMax , "Final time");
-  pl->set<int>   ("Initial Time Index", 0      , "Initial time index");
-  pl->set<int>   ("Final Time Index"  , 1000000, "Final time index");
-  pl->set<double>("Minimum Time Step" , stdMin , "Minimum time step size");
-  pl->set<double>("Initial Time Step" , stdMin , "Initial time step size");
-  pl->set<double>("Maximum Time Step" , stdMax , "Maximum time step size");
+  pl->set<double>("Initial Time"         , 0.0    , "Initial time");
+  pl->set<double>("Final Time"           , stdMax , "Final time");
+  pl->set<int>   ("Initial Time Index"   , 0      , "Initial time index");
+  pl->set<int>   ("Final Time Index"     , 1000000, "Final time index");
+  pl->set<double>("Minimum Time Step"    , stdMin , "Minimum time step size");
+  pl->set<double>("Initial Time Step"    , stdMin , "Initial time step size");
+  pl->set<double>("Maximum Time Step"    , stdMax , "Maximum time step size");
+  //IKT, FIXME: set reasonable default values for amplification and reduction factors
+  pl->set<double>("Amplification Factor" , 1.75   , "Amplification factor");
+  pl->set<double>("Reduction Factor"     , 0.5    , "Reduction factor");
+  //IKT, FIXME: set reasonable default values for min/max values of monitoring factors
+  pl->set<double>("Minimum Value Monitoring Function" , 0.001   , "Min value eta");
+  pl->set<double>("Maximum Value Monitoring Function" , 10.0    , "Max value eta");
   pl->set<int>   ("Minimum Order", 0,
     "Minimum time-integration order.  If set to zero (default), the\n"
     "Stepper minimum order is used.");
@@ -485,7 +544,8 @@ TimeStepControl<Scalar>::getValidParameters() const
     "'Integrator Step Type' indicates whether the Integrator will allow "
     "the time step to be modified.\n"
     "  'Constant' - Integrator will take constant time step sizes.\n"
-    "  'Variable' - Integrator will allow changes to the time step size.\n");
+    "  'Variable' - Integrator will allow changes to the time step size.\n"
+    "  'Variable Denner' - Integrator will allow changes to the time step size.\n");
 
   pl->set<std::string>("Output Time List", "",
     "Comma deliminated list of output times");
