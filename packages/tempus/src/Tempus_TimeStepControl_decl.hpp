@@ -106,7 +106,7 @@ public:
     virtual int getMaxOrder() const
       { return tscPL_->get<int>   ("Maximum Order"); }
     virtual Scalar getAmplFactor() const
-      { return tscPL_->get<double>   ("Amplification Factor"); }
+      { return tscPL_->get<double>("Amplification Factor"); }
     virtual Scalar getReductFactor() const
       { return tscPL_->get<double>   ("Reduction Factor"); }
     virtual Scalar getMinEta() const
@@ -166,7 +166,7 @@ public:
       { tscPL_->set<int>
         ("Maximum Number of Consecutive Stepper Failures", MaxConsecFailures); }
     virtual void setNumTimeSteps(int numTimeSteps);
-    virtual Scalar computeEta(); 
+    virtual Scalar computeEta(const Teuchos::RCP<SolutionHistory<Scalar> > & solutionHistory); 
   //@}
 
 private:
