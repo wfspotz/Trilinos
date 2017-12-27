@@ -18,9 +18,6 @@
 //Thyra
 #include "Thyra_VectorStdOps.hpp"
 
-//IKT: uncomment the following to get some debug output
-//#define VERBOSE_DEBUG_OUTPUT
-//#define DEBUG_OUTPUT
 
 namespace Tempus {
 
@@ -68,10 +65,6 @@ void TimeStepControl<Scalar>::getNextTimeStep(
     const Scalar errorRel = metaData_->getErrorRel();
     int order = metaData_->getOrder();
     Scalar dt = metaData_->getDt();
-#ifdef DEBUG_OUTPUT
-    RCP<Teuchos::FancyOStream> out = this->getOStream();
-    *out << "IKT dt = " << dt << "\n"; 
-#endif
     bool output = metaData_->getOutput();
 
     RCP<StepperState<Scalar> > stepperState = workingState->getStepperState();
@@ -203,13 +196,7 @@ void TimeStepControl<Scalar>::getNextTimeStep(
       //Section 2.2.1 / Algorithm 2.4 of A. Denner, "Experiments on 
       //Temporal Variable Step BDF2 Algorithms", Masters Thesis, U Wisconsin-Madison, 2014.
       Scalar rho    = getAmplFactor(); 
-      TEUCHOS_TEST_FOR_EXCEPTION(rho <= 1.0, std::out_of_range,
-          "Error - Invalid valid of Amplification Factor = " << rho << "!  \n" 
-          << "Amplification Factor must be > 1.0.\n"); 
       Scalar sigma  = getReductFactor();
-      TEUCHOS_TEST_FOR_EXCEPTION(sigma >= 1.0, std::out_of_range,
-          "Error - Invalid valid of Reduction Factor = " << sigma << "!  \n" 
-          << "Reduction Factor must be < 1.0.\n"); 
       RCP<Teuchos::FancyOStream> out = this->getOStream();
       Scalar eta = computeEta(solutionHistory); 
       //Checks from 'Step Type' = 'Variable'
@@ -333,6 +320,8 @@ Scalar TimeStepControl<Scalar>::computeEta(const Teuchos::RCP<SolutionHistory<Sc
   //IKT, FIXME, ask Curt: why is (*solutionHistory)[numStates-1] = (*solutionHistory)[numStates-2]???
   RCP<const Thyra::VectorBase<Scalar> > xOld = (*solutionHistory)[numStates-3]->getX();
   RCP<const Thyra::VectorBase<Scalar> > x = (*solutionHistory)[numStates-1]->getX();
+//IKT: uncomment the following to get some debug output
+//#define VERBOSE_DEBUG_OUTPUT
 #ifdef VERBOSE_DEBUG_OUTPUT
   Teuchos::Range1D range;
   *out << "\n*** xOld ***\n";
@@ -355,7 +344,7 @@ Scalar TimeStepControl<Scalar>::computeEta(const Teuchos::RCP<SolutionHistory<Sc
   Scalar xOldNorm = Thyra::norm(*xOld);  
   //eta = ||x^(n+1)-x^n||/(||x^n||+eps)
   eta = xDiffNorm/(xOldNorm + eps);
-#ifdef DEBUG_OUTPUT
+#ifdef VERBOSE_DEBUG_OUTPUT
   *out << "IKT xDiffNorm, xOldNorm, eta = " << xDiffNorm << ", " << xOldNorm 
        << ", " << eta << "\n";  
 #endif
@@ -570,10 +559,10 @@ TimeStepControl<Scalar>::getValidParameters() const
   pl->set<double>("Minimum Time Step"    , stdMin , "Minimum time step size");
   pl->set<double>("Initial Time Step"    , stdMin , "Initial time step size");
   pl->set<double>("Maximum Time Step"    , stdMax , "Maximum time step size");
-  //IKT, FIXME: set reasonable default values for amplification and reduction factors
+  //From (Denner, 2014), amplification factor can be at most 1.91 for stability. 
   pl->set<double>("Amplification Factor" , 1.75   , "Amplification factor");
   pl->set<double>("Reduction Factor"     , 0.5    , "Reduction factor");
-  //IKT, FIXME: set reasonable default values for min/max values of monitoring factors
+  //FIXME? may need to modify default values of monitoring function 
   pl->set<double>("Minimum Value Monitoring Function" , 1.0e-6      , "Min value eta");
   pl->set<double>("Maximum Value Monitoring Function" , 1.0e-1      , "Max value eta");
   pl->set<int>   ("Minimum Order", 0,
