@@ -179,7 +179,8 @@ void TimeStepControl<Scalar>::getNextTimeStep(
 
     else if (getStepType() == "Variable")  
     {
-      // \todo The following controls should be generalized to plugable options.
+      // The following controls are generalized to plugable options in 'Variable Denner'
+      // Step Type.
       Scalar dt_adjustment_factor = 0.5; 
       if (stepperState->stepperStatus_ == Status::FAILED) dt *= dt_adjustment_factor;
       if (errorAbs > getMaxAbsError()) dt *= dt_adjustment_factor;
@@ -199,13 +200,6 @@ void TimeStepControl<Scalar>::getNextTimeStep(
       Scalar sigma  = getReductFactor();
       RCP<Teuchos::FancyOStream> out = this->getOStream();
       Scalar eta = computeEta(solutionHistory); 
-      //Checks from 'Step Type' = 'Variable'
-      if (errorAbs > getMaxAbsError()) dt *= sigma; //error too high, reduce dt
-      if (errorRel > getMaxRelError()) dt *= sigma; //error too high, reduce dt 
-      if (order < getMinOrder()) dt *= rho; //order too low, increase dt
-      if (order > getMaxOrder()) dt *= sigma; // order to high, reduce dt 
-      if (dt < getMinTimeStep()) dt = getMinTimeStep();
-      if (dt > getMaxTimeStep()) dt = getMaxTimeStep();
 
       if (stepperState->stepperStatus_ == Status::FAILED) { //Stepper failed, reduce dt
         *out << "Stepper failed!  Reducing time-step: old dt = " << dt 
@@ -224,6 +218,13 @@ void TimeStepControl<Scalar>::getNextTimeStep(
           dt *= sigma; 
         }
       }
+      //Checks from 'Step Type' = 'Variable'
+      if (errorAbs > getMaxAbsError()) dt *= sigma; //error too high, reduce dt
+      if (errorRel > getMaxRelError()) dt *= sigma; //error too high, reduce dt 
+      if (order < getMinOrder()) dt *= rho; //order too low, increase dt
+      if (order > getMaxOrder()) dt *= sigma; // order to high, reduce dt 
+      if (dt < getMinTimeStep()) dt = getMinTimeStep();
+      if (dt > getMaxTimeStep()) dt = getMaxTimeStep();
     }
 
     // Adjust time step to hit final time or correct for small
