@@ -54,6 +54,7 @@ void TimeStepControl<Scalar>::getNextTimeStep(
   Status & integratorStatus)
 {
   using Teuchos::RCP;
+  const Teuchos::EVerbosityLevel verbLevel = solutionHistory->getVerbLevel(); 
 
   TEMPUS_FUNC_TIME_MONITOR("Tempus::TimeStepControl::getNextTimeStep()");
   {
@@ -179,21 +180,6 @@ void TimeStepControl<Scalar>::getNextTimeStep(
 
     else if (getStepType() == "Variable")  
     {
-      // The following controls are generalized to plugable options in 'Variable Denner'
-      // Step Type.
-      Scalar dt_adjustment_factor = 0.5; 
-      if (stepperState->stepperStatus_ == Status::FAILED) dt *= dt_adjustment_factor;
-      if (errorAbs > getMaxAbsError()) dt *= dt_adjustment_factor;
-      if (errorRel > getMaxRelError()) dt *= dt_adjustment_factor;
-      if (order < getMinOrder()) dt /= dt_adjustment_factor;
-      if (order > getMaxOrder()) dt *= dt_adjustment_factor;
-
-      if (dt < getMinTimeStep()) dt = getMinTimeStep();
-      if (dt > getMaxTimeStep()) dt = getMaxTimeStep();
-    }
-
-    else if (getStepType() == "Variable Denner")  
-    {
       //Section 2.2.1 / Algorithm 2.4 of A. Denner, "Experiments on 
       //Temporal Variable Step BDF2 Algorithms", Masters Thesis, U Wisconsin-Madison, 2014.
       Scalar rho    = getAmplFactor(); 
@@ -208,13 +194,17 @@ void TimeStepControl<Scalar>::getNextTimeStep(
       }
       else { //Stepper passed
         if (eta < getMinEta()) { // increase dt
-          *out << "  eta = " << eta << " < eta_min = " << getMinEta() << "! \n" 
-               << "    Increasing time-step: old dt = " << dt << ", new dt = " << dt*rho << "\n"; 
+          if (Teuchos::as<int>(verbLevel) != Teuchos::as<int>(Teuchos::VERB_NONE)) {
+            *out << "  eta = " << eta << " < eta_min = " << getMinEta() << "! \n" 
+                 << "    Increasing time-step: old dt = " << dt << ", new dt = " << dt*rho << "\n"; 
+          }
           dt *= rho; 
         }
         else if (eta > getMaxEta()) { //reduce dt 
-          *out << "  eta = " << eta << " > eta_max = " << getMaxEta() << "! \n" 
-               << "    Reducing time-step: old dt = " << dt << ", new dt = " << dt*sigma << "\n"; 
+          if (Teuchos::as<int>(verbLevel) != Teuchos::as<int>(Teuchos::VERB_NONE)) {
+            *out << "  eta = " << eta << " > eta_max = " << getMaxEta() << "! \n" 
+                 << "    Reducing time-step: old dt = " << dt << ", new dt = " << dt*sigma << "\n"; 
+          }
           dt *= sigma; 
         }
       }
@@ -313,12 +303,10 @@ Scalar TimeStepControl<Scalar>::computeEta(const Teuchos::RCP<SolutionHistory<Sc
   RCP<Teuchos::FancyOStream> out = this->getOStream();
   int numStates = solutionHistory->getNumStates();
   //Compute eta
-  //IKT, FIXME?  add check that numStates >= 2? 
   if (numStates < 3) {
     eta = getMinEta(); 
     return eta;  
   }
-  //IKT, FIXME, ask Curt: why is (*solutionHistory)[numStates-1] = (*solutionHistory)[numStates-2]???
   RCP<const Thyra::VectorBase<Scalar> > xOld = (*solutionHistory)[numStates-3]->getX();
   RCP<const Thyra::VectorBase<Scalar> > x = (*solutionHistory)[numStates-1]->getX();
 //IKT: uncomment the following to get some debug output
@@ -475,13 +463,11 @@ void TimeStepControl<Scalar>::setParameterList(
     << "    order = " << getInitOrder()  << "\n");
 
   TEUCHOS_TEST_FOR_EXCEPTION(
-    (getStepType() != "Constant" and getStepType() != "Variable" 
-     and getStepType() != "Variable Denner"),
+    (getStepType() != "Constant" and getStepType() != "Variable"),
     std::out_of_range,
       "Error - 'Integrator Step Type' does not equal none of these:\n"
     << "  'Constant' - Integrator will take constant time step sizes.\n"
     << "  'Variable' - Integrator will allow changes to the time step size.\n"
-    << "  'Variable Denner' - Integrator will allow changes to the time step size.\n"
     << "  stepType = " << getStepType()  << "\n");
 
   // Parse output times
@@ -582,8 +568,7 @@ TimeStepControl<Scalar>::getValidParameters() const
     "'Integrator Step Type' indicates whether the Integrator will allow "
     "the time step to be modified.\n"
     "  'Constant' - Integrator will take constant time step sizes.\n"
-    "  'Variable' - Integrator will allow changes to the time step size.\n"
-    "  'Variable Denner' - Integrator will allow changes to the time step size.\n");
+    "  'Variable' - Integrator will allow changes to the time step size.\n"); 
 
   pl->set<std::string>("Output Time List", "",
     "Comma deliminated list of output times");
