@@ -57,12 +57,19 @@
 INCLUDE("${CTEST_SCRIPT_DIRECTORY}/../../TrilinosCTestDriverCore.cmake")
 
 #
-# Platform/compiler specific options for typhon using gcc
+# Platform/compiler specific options for enigma using gcc
 #
 
 MACRO(TRILINOS_SYSTEM_SPECIFIC_CTEST_DRIVER)
 
   # Base of Trilinos/cmake/ctest then BUILD_DIR_NAME
+
+  IF(COMM_TYPE STREQUAL MPI)
+    string(TOUPPER $ENV{SEMS_MPI_NAME} UC_MPI_NAME)
+    SET(BUILD_DIR_NAME ${UC_MPI_NAME}-$ENV{SEMS_MPI_VERSION}_${BUILD_TYPE}_${BUILD_NAME_DETAILS})
+  ELSE()
+    SET(BUILD_DIR_NAME ${COMM_TYPE}-${BUILD_TYPE}_${BUILD_NAME_DETAILS})
+  ENDIF()
 
   SET( CTEST_DASHBOARD_ROOT "${TRILINOS_CMAKE_DIR}/../../${BUILD_DIR_NAME}" )
 
@@ -83,22 +90,12 @@ MACRO(TRILINOS_SYSTEM_SPECIFIC_CTEST_DRIVER)
     "-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON"
     "-DCMAKE_AR=/usr/bin/ar"
 
-    "-DTPL_ENABLE_SuperLU:BOOL=ON"
-    "-DAmesos2_ENABLE_KLU2:BOOL=OFF"
-
-    "-DMueLu_ENABLE_BROKEN_TESTS:BOOL=ON"
-    "-DXpetra_ENABLE_BROKEN_TESTS:BOOL=ON"
-
-    "-DTPL_SuperLU_INCLUDE_DIRS=/home/tawiesn/software/SuperLU_4.3/SRC"
-    "-DTPL_SuperLU_LIBRARY_DIRS=/home/tawiesn/software/SuperLU_4.3/lib"
-    "-DTPL_SuperLU_LIBRARIES=/home/tawiesn/software/SuperLU_4.3/lib/libsuperlu_4.3.a"
+    "-DSuperLU_INCLUDE_DIRS=$ENV{SEMS_SUPERLU_INCLUDE_PATH}"
+    "-DSuperLU_LIBRARY_DIRS=$ENV{SEMS_SUPERLU_LIBRARY_PATH}"
+    "-DSuperLU_LIBRARY_NAMES=superlu"
   )
 
   SET_DEFAULT(COMPILER_VERSION "$ENV{SEMS_COMPILER_NAME}-$ENV{SEMS_COMPILER_VERSION}")
-
-  # paramters not accepted?
-  #  "-DTPL_SuperLU_LIBRARIES=/home/tawiesn/software/SuperLU_4.3/lib/libsuperlu_4.3.a"
-  #  "-DTPL_SuperLU_INCLUDE_DIRS=/home/tawiesn/software/SuperLU_4.3/SRC"
 
   # no CUDA on this machine, yet...
   #  "-DCUDA_TOOLKIT_ROOT_DIR=/opt/nvidia/cuda/6.5.14"
