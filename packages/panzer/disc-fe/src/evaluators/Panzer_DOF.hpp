@@ -59,6 +59,18 @@ public:
 
   DOF(const Teuchos::ParameterList& p);
 
+  /** \brief Ctor
+    *
+    * \param[in] input Tag that corresponds to the input DOF field (sized according to bd)
+    * \param[in] output Tag that corresponds to the output field (sized according the id and if bd corresponds to a vector basis)
+    * \param[in] bd Basis being used
+    * \param[in] id Integration rule used
+    */
+  DOF(const PHX::Tag<typename EvalT::ScalarT> & input,
+      const PHX::Tag<typename EvalT::ScalarT> & output,
+      const panzer::BasisDescriptor & bd,
+      const panzer::IntegrationDescriptor & id);
+
   void postRegistrationSetup(typename TRAITS::SetupData d,
                              PHX::FieldManager<TRAITS>& fm);
 
@@ -67,6 +79,10 @@ public:
 private:
 
   typedef typename EvalT::ScalarT ScalarT;
+
+  bool use_descriptors_;
+  panzer::BasisDescriptor bd_;
+  panzer::IntegrationDescriptor id_;
   
   PHX::MDField<const ScalarT,Cell,Point> dof_basis;
 
@@ -90,6 +106,11 @@ public:
 
   DOF(const Teuchos::ParameterList& p);
 
+  DOF(const PHX::Tag<panzer::Traits::Jacobian::ScalarT> & input,
+      const PHX::Tag<panzer::Traits::Jacobian::ScalarT> & output,
+      const panzer::BasisDescriptor & bd,
+      const panzer::IntegrationDescriptor & id);
+
   void postRegistrationSetup(typename TRAITS::SetupData d,
                              PHX::FieldManager<TRAITS>& fm);
 
@@ -100,12 +121,15 @@ public:
 private:
 
   typedef panzer::Traits::Jacobian::ScalarT ScalarT;
+
+  bool use_descriptors_;
+  panzer::BasisDescriptor bd_;
+  panzer::IntegrationDescriptor id_;
   
   PHX::MDField<const ScalarT,Cell,Point> dof_basis;
 
   PHX::MDField<ScalarT,Cell,Point> dof_ip_scalar;
   PHX::MDField<ScalarT,Cell,Point,Dim> dof_ip_vector;
-
 
   std::string basis_name;
   std::size_t basis_index;
