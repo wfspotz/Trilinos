@@ -305,7 +305,7 @@ namespace MueLu {
     // Attach FactoryManager to the coarse level
     SetFactoryManager SFMCoarse(Levels_[coarseLevelID], coarseLevelManager);
 
-    //    if (isDumpingEnabled_ && dumpLevel_ == 0 && coarseLevelID == 1)
+    if (isDumpingEnabled_ && dumpLevel_ == 0 && coarseLevelID == 1)
       DumpCurrentGraph();
 
     RCP<TopSmootherFactory> coarseFact   = rcp(new TopSmootherFactory(coarseLevelManager, "CoarseSolver"));
@@ -454,7 +454,7 @@ namespace MueLu {
     }
 
     // I think this is the proper place for graph so that it shows every dependence
-    //    if (isDumpingEnabled_ && dumpLevel_ > 0 && coarseLevelID == dumpLevel_)
+    if (isDumpingEnabled_ && dumpLevel_ > 0 && coarseLevelID == dumpLevel_)
       DumpCurrentGraph();
 
     if (!isFinestLevel) {
