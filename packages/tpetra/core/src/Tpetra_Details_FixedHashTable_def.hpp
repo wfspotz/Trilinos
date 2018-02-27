@@ -238,9 +238,11 @@ public:
   operator () (const size_type& i) const
   {
     typedef typename hash_type::result_type hash_value_type;
+    typedef typename counts_view_type::value_type atomic_increment_type;
+    atomic_increment_type posOne = static_cast<atomic_increment_type>(1);
 
     const hash_value_type hashVal = hash_type::hashFunc (keys_[i], size_);
-    Kokkos::atomic_fetch_add (&counts_[hashVal], 1);
+    Kokkos::atomic_fetch_add (&counts_[hashVal], posOne);
   }
 
 private:
@@ -361,6 +363,8 @@ public:
   // design iteration of Kokkos, which did not separate memory and
   // execution spaces.
   typedef Tpetra::Details::Hash<key_type, Kokkos::Device<execution_space, memory_space> > hash_type;
+  typedef typename counts_view_type::value_type atomic_increment_type;
+  atomic_increment_type negOne = static_cast<atomic_increment_type>(-1);
 
   /// \brief Constructor
   ///
@@ -467,7 +471,7 @@ public:
     const hash_value_type hashVal = hash_type::hashFunc (key, size_);
 
     // Return the old count; decrement afterwards.
-    const offset_type count = Kokkos::atomic_fetch_add (&counts_[hashVal], -1);
+    const offset_type count = Kokkos::atomic_fetch_add (&counts_[hashVal], negOne);
     if (count == 0) {
       dst.success_ = false; // FAILURE!
     }

@@ -58,27 +58,30 @@ struct RowCountsFunctor
   KOKKOS_INLINE_FUNCTION
   void operator() (const LO localRow, std::size_t& curNumLocalEntries) const
   {
+    typedef typename decltype(counts_)::value_type atomic_increment_type;
+    atomic_increment_type posOne = static_cast<atomic_increment_type>(1);
+
     // Add a diagonal matrix entry
-    Kokkos::atomic_fetch_add(&counts_(localRow), 1);
+    Kokkos::atomic_fetch_add(&counts_(localRow), posOne);
     ++curNumLocalEntries;
     // Contribute a matrix entry to the previous row
     if (localRow > 0) {
-      Kokkos::atomic_fetch_add(&counts_(localRow-1), 1);
+      Kokkos::atomic_fetch_add(&counts_(localRow-1), posOne);
       ++curNumLocalEntries;
     }
     // Contribute a matrix entry to the next row
     if (localRow < numMyNodes_-1) {
-      Kokkos::atomic_fetch_add(&counts_(localRow+1), 1);
+      Kokkos::atomic_fetch_add(&counts_(localRow+1), posOne);
       ++curNumLocalEntries;
     }
     // MPI process to the left sends us an entry
     if ((myRank_ > 0) && (localRow == 0)) {
-      Kokkos::atomic_fetch_add(&counts_(localRow), 1);
+      Kokkos::atomic_fetch_add(&counts_(localRow), posOne);
       ++curNumLocalEntries;
     }
     // MPI process to the right sends us an entry
     if ((myRank_ < numProcs_-1) && (localRow == numMyNodes_-1)) {
-      Kokkos::atomic_fetch_add(&counts_(localRow), 1);
+      Kokkos::atomic_fetch_add(&counts_(localRow), posOne);
       ++curNumLocalEntries;
     }
   }

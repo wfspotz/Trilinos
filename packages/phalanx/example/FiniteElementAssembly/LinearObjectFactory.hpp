@@ -208,6 +208,8 @@ namespace phx_example {
     {
       if ( global_node_set_.valid_at(iset) ) {
         // Add each entry to the graph entries.
+        typedef typename decltype(row_count_)::value_type atomic_increment_type;
+        atomic_increment_type posOne = static_cast<atomic_increment_type>(1);
         
         const Kokkos::pair<int,int> key = global_node_set_.key_at(iset) ;
         const int row_node = key.first ;
@@ -218,7 +220,7 @@ namespace phx_example {
           const int row_gid = row_node * num_equations_ + row_eq;  
           for (int col_eq=0; col_eq < num_equations_; ++col_eq) {
             const int col_gid = col_node * num_equations_ + col_eq;
-            const size_t matrix_offset = graph_.row_map(row_gid) + Kokkos::atomic_fetch_add(&row_count_(row_gid), 1);
+            const size_t matrix_offset = graph_.row_map(row_gid) + Kokkos::atomic_fetch_add(&row_count_(row_gid), posOne);
             graph_.entries( matrix_offset ) = col_gid;
           }
         }

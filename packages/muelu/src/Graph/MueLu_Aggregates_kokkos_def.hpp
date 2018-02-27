@@ -154,12 +154,13 @@ namespace MueLu {
 
     int myPID = GetMap()->getComm()->getRank();
 
+    typedef typename decltype(rows)::value_type atomic_increment_type;
     typename entries_type::non_const_type cols(Kokkos::ViewAllocateWithoutInitializing("Agg_cols"), rows(numAggregates));
     size_t realnnz = 0;
     Kokkos::parallel_reduce("MueLu:Aggregates:GetGraph:compute_cols", range_type(0, procWinner.size()),
       KOKKOS_LAMBDA(const LO i, size_t& nnz) {
         if (procWinner(i, 0) == myPID) {
-          auto idx = Kokkos::atomic_fetch_add( &offsets(vertex2AggId(i,0)), 1);
+          auto idx = Kokkos::atomic_fetch_add( &offsets(vertex2AggId(i,0)), (atomic_increment_type)1);
           cols(idx) = i;
           nnz++;
         }
