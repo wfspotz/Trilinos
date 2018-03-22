@@ -1072,9 +1072,14 @@ packCrsMatrixWithOwningPIDs (const CrsMatrix<ST, LO, GO, NT>& sourceMatrix,
                                             sourcePIDs.size (), true,
                                             "export_pids");
   constexpr bool pack_pids = true;
-  packCrsMatrixImpl (sourceMatrix, exports_dv,
-                     num_packets_per_lid_d, export_lids_d,
-                     export_pids_d, constantNumPackets, pack_pids, distor);
+  packCrsMatrixImpl (sourceMatrix, 
+                     exports_dv,
+                     num_packets_per_lid_d, 
+                     export_lids_d,
+                     export_pids_d, 
+                     constantNumPackets, 
+                     pack_pids, 
+                     distor);
 
   // The counts are an output of packCrsMatrixImpl, so we
   // have to copy them back to host.

@@ -226,14 +226,12 @@ namespace Tpetra {
     /// \bief Full Expert constructor
     /// Requirements: source and target maps are fully correct
     ///
-
+    // cblcbl this is the guy to call for reverse comm....
     Import (const Teuchos::RCP<const Map<LocalOrdinal, GlobalOrdinal, Node> >& source,
             const Teuchos::RCP<const Map<LocalOrdinal, GlobalOrdinal, Node> >& target,
-            Teuchos::Array<int> & userRemotePIDs,
-            Teuchos::Array<GlobalOrdinal>& remoteGIDs,
+            const Teuchos::ArrayView<int> & remotePIDs,
             const Teuchos::ArrayView<const LocalOrdinal> & userExportLIDs,
             const Teuchos::ArrayView<const int> & userExportPIDs,
-            const bool useRemotePIDs,
             const Teuchos::RCP<Teuchos::ParameterList>& plist = Teuchos::null,
             const Teuchos::RCP<Teuchos::FancyOStream>& out = Teuchos::null);
 
