@@ -1076,7 +1076,7 @@ packCrsMatrixWithOwningPIDs (const CrsMatrix<ST, LO, GO, NT>& sourceMatrix,
                      exports_dv,
                      num_packets_per_lid_d, 
                      export_lids_d,
-                     export_pids_d, 
+                     export_pids_d,
                      constantNumPackets, 
                      pack_pids, 
                      distor);
