@@ -8630,11 +8630,6 @@ namespace Tpetra {
     Teuchos::ArrayView<const char> hostImports =
       getArrayViewFromDualView (destMat->imports_);
 
-    // cbl dbg
-    Teuchos::Array<LO> copyRemoteLIDs(RemoteLIDs.size());
-    std::copy(RemoteLIDs.begin(),RemoteLIDs.end(),copyRemoteLIDs.begin());
-    // cbl dbg
-
     size_t mynnz =
       unpackAndCombineWithOwningPIDsCount (*this, 
                                            RemoteLIDs, 
@@ -8777,12 +8772,7 @@ namespace Tpetra {
 #ifdef HAVE_TPETRA_MMM_TIMINGS
     MM = Teuchos::rcp(new TimeMonitor(*TimeMonitor::getNewTimer(prefix + std::string("TAFC CreateImporter"))));
 #endif
-    RCP<import_type> MyImport;
-
-     //cbl REALLY MAKE SURE IT'S A DEEP COPY
-    Teuchos::Array<int> copyRemotePids (RemotePids.size ());
-    std::copy (RemotePids.begin (), RemotePids.end (), copyRemotePids.begin ());
-    // cbl
+    RCP<import_type> MyImport;   
 
     if( !( isMM && !MyImporter.is_null()) ) { 
     MyImport = rcp (new import_type (MyDomainMap, MyColMap, RemotePids));
@@ -8801,11 +8791,11 @@ namespace Tpetra {
 #endif
 
     if( isMM && !MyImporter.is_null()) {
-      // static bool first = true;
-      // if(first) {
-      //   first = false;
-      //   std::cerr<<" isMM "<<std::endl;
-      // }
+      static bool first = true;
+      if(first) {
+        first = false;
+        std::cerr<<" isMM "<<std::endl;
+      }
 
       // The isMatrixMatrix_TransferAndFillComplete parameter is set to true. This means the unfiltered
       // reverseNeighborDiscovery is safe (by assertion?!?). 
@@ -9056,7 +9046,7 @@ namespace Tpetra {
 
           MyImport = rcp ( new import_type (MyDomainMap,
                                             MyColMap,
-                                            copyRemotePids,
+                                            RemotePids,
                                             userExportLIDs().getConst(),
                                             userExportPIDs().getConst(),
                                             plist) 
