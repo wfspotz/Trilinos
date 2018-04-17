@@ -48,11 +48,11 @@
 #include "Tpetra_ConfigDefs.hpp"
 
 // Tpetra include files
-#include "PyTrilinos_Tpetra_Util.hpp"
 #include "Tpetra_Version.hpp"
 #include "Tpetra_CombineMode.hpp"
 #include "Tpetra_Map_decl.hpp"
 #include "Tpetra_MultiVector.hpp"
 #include "Tpetra_Vector.hpp"
+#include "PyTrilinos_Tpetra_Util_decl.hpp"
 
 #endif
