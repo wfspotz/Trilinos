@@ -54,7 +54,7 @@
 # @HEADER
 
 
-INCLUDE("${CTEST_SCRIPT_DIRECTORY}/TrilinosCTestDriverCore.sems.cmake")
+INCLUDE("${CTEST_SCRIPT_DIRECTORY}/TrilinosCTestDriverCore.PyTrilinos.cmake")
 
 #
 # Set the options specific to this build case
@@ -79,8 +79,39 @@ SET( EXTRA_CONFIGURE_OPTIONS
   "-DTrilinos_CONFIGURE_OPTIONS_FILE:STRING=cmake/std/MpiReleaseDebugSharedPtSettings.cmake,cmake/std/BasicCiTestingSettings.cmake,cmake/std/sems/SEMSDevEnv.cmake"
   "-DTrilinos_TEST_CATEGORIES=BASIC"
   "-DTrilinos_ENABLE_CONFIGURE_TIMING=ON"
-  )
-# NOTE: That above must match *exactly* what is listed is listed in
+  "-DCMAKE_BUILD_TYPE:STRING=DEBUG"
+  "-DBUILD_SHARED_LIBS:BOOL=ON"
+  "-DTPL_ENABLE_MPI:BOOL=ON"
+  "-DMPI_BASE_DIR:PATH=$HOME/anaconda2"
+  "-DPYTHON_EXECUTABLE:FILEPATH=$HOME/anaconda2/bin/python"
+  "-DSWIG_EXECUTABLE:FILEPATH=$HOME/anaconda2/bin/swig"
+  "-DTrilinos_ENABLE_Fortran:BOOL=OFF"
+  "-DTrilinos_ENABLE_ALL_PACKAGES:BOOL=OFF"
+  "-DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES:BOOL=OFF"
+  "-DTrilinos_ENABLE_Teuchos:BOOL=ON"
+  "-DTrilinos_ENABLE_Epetra:BOOL=ON"
+  "-DTrilinos_ENABLE_Triutils:BOOL=ON"
+  "-DTrilinos_ENABLE_Tpetra:BOOL=ON"
+  "-DTrilinos_ENABLE_EpetraExt:BOOL=ON"
+  "-DTrilinos_ENABLE_Domi:BOOL=ON"
+  "-DTrilinos_ENABLE_Isorropia:BOOL=ON"
+  "-DTrilinos_ENABLE_Pliris:BOOL=ON"
+  "-DTrilinos_ENABLE_AztecOO:BOOL=ON"
+  "-DTrilinos_ENABLE_Galeri:BOOL=ON"
+  "-DTrilinos_ENABLE_Amesos:BOOL=ON"
+  "-DTrilinos_ENABLE_Ifpack:BOOL=ON"
+  "-DTrilinos_ENABLE_Komplex:BOOL=ON"
+  "-DTrilinos_ENABLE_ML:BOOL=ON"
+  "-DTrilinos_ENABLE_Anasazi:BOOL=ON"
+  "-DTrilinos_ENABLE_NOX:BOOL=ON"
+  "-DNOX_ENABLE_LOCA:BOOL=ON"
+  "-DTrilinos_ENABLE_PyTrilinos:BOOL=ON"
+  "-DTrilinos_ENABLE_TESTS:BOOL=OFF"
+  "-DTrilinos_ENABLE_EXAMPLES:BOOL=OFF"
+  "-DPyTrilinos_ENABLE_TESTS:BOOL=ON"
+  "-DPyTrilinos_ENABLE_EXAMPLES:BOOL=ON"
+  "-DMPI_EXEC_MAX_NUMPROCS:INT=16"  )
+# NOTE: That above must match *exactly* what is listed in
 # project-checkin-test-config.py and produced by the checkin-test-sems.sh
 # --default-builds=MPI_RELEASE_DEBUG_SHARED_PT build!
 

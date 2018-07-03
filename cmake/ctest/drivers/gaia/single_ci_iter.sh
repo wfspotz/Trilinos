@@ -12,6 +12,7 @@ echo "TRILINOS_DIR='${TRILINOS_DIR}'"
 source /etc/bashrc
 TRILINOS_SEMS_DEV_ENV_VERBOSE=1
 source $TRILINOS_DIR/cmake/load_sems_dev_env.sh
+export PATH=`/Users/wfspotz/bin/use_anaconda.py 2`
 
 export CTEST_DASHBOARD_ROOT=$PWD
 
@@ -24,5 +25,5 @@ cd ..
 
 if [ "$NEW_COMMITS" != "" ] || [ "$CI_FIRST_ITERATION" == "1" ]  ; then
   #echo ctest -V -S $DRIVER_SCRIPT_DIR/ctest_linux_mpi_debug_shared_pt_ci.sems.cmake
-  ctest -V -S $DRIVER_SCRIPT_DIR/ctest_darwin_mpi_debug_pytrilinos_ci.sems.cmake
+  ctest -V -S $DRIVER_SCRIPT_DIR/ctest_darwin_mpi_debug_py2_ci.pytrilinos.cmake
 fi
